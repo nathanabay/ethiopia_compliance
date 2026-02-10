@@ -1,0 +1,34 @@
+{
+    "add_total_row": 0,
+    "add_translate_data": 0,
+    "columns": [],
+    "disabled": 0,
+    "docstatus": 0,
+    "doctype": "Report",
+    "filters": [],
+    "is_standard": "Yes",
+    "javascript": null,
+    "json": "[{\"fieldname\": \"company\", \"label\": \"Company\", \"fieldtype\": \"Link\", \"options\": \"Company\", \"reqd\": 1}, {\"fieldname\": \"from_date\", \"label\": \"From Date\", \"fieldtype\": \"Date\", \"reqd\": 1}, {\"fieldname\": \"to_date\", \"label\": \"To Date\", \"fieldtype\": \"Date\", \"reqd\": 1}]",
+    "letter_head": null,
+    "module": "Ethiopia Compliance",
+    "name": "TASS Purchase Excel Export",
+    "prepared_report": 0,
+    "query": null,
+    "ref_doctype": "Purchase Invoice",
+    "reference_report": null,
+    "report_name": "TASS Purchase Excel Export",
+    "report_script": null,
+    "report_type": "Query Report",
+    "roles": [
+        {
+            "role": "Accounts User"
+        },
+        {
+            "role": "Purchase User"
+        },
+        {
+            "role": "Accounts Manager"
+        }
+    ],
+    "timeout": 0
+}

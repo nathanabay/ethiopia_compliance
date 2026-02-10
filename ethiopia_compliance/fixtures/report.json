@@ -1,0 +1,302 @@
+[
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": "[{\"fieldname\": \"company\", \"label\": \"Company\", \"fieldtype\": \"Link\", \"options\": \"Company\", \"default\": \"BESPO\", \"reqd\": 1}, {\"fieldname\": \"from_date\", \"label\": \"From Date\", \"fieldtype\": \"Date\", \"default\": \"2026-01-01\", \"reqd\": 1}, {\"fieldname\": \"to_date\", \"label\": \"To Date\", \"fieldtype\": \"Date\", \"default\": \"2026-02-02\", \"reqd\": 1}]",
+  "letter_head": null,
+  "modified": "2026-02-02 12:22:58.251956",
+  "module": "Ethiopia Compliance",
+  "name": "Ethiopia Schedule A",
+  "prepared_report": 0,
+  "query": null,
+  "ref_doctype": "Salary Slip",
+  "reference_report": null,
+  "report_name": "Ethiopia Schedule A",
+  "report_script": "\ndef execute(filters=None):\n    columns = [\n        {\"fieldname\": \"emp_tin\", \"label\": \"Employee TIN\", \"fieldtype\": \"Data\", \"width\": 140},\n        {\"fieldname\": \"emp_name\", \"label\": \"Employee Name\", \"fieldtype\": \"Data\", \"width\": 200},\n        {\"fieldname\": \"basic_salary\", \"label\": \"Basic Salary\", \"fieldtype\": \"Currency\", \"width\": 120},\n        {\"fieldname\": \"transport_taxable\", \"label\": \"Taxable Transport\", \"fieldtype\": \"Currency\", \"width\": 120},\n        {\"fieldname\": \"overtime\", \"label\": \"Overtime\", \"fieldtype\": \"Currency\", \"width\": 100},\n        {\"fieldname\": \"other_taxable\", \"label\": \"Other Taxable\", \"fieldtype\": \"Currency\", \"width\": 120},\n        {\"fieldname\": \"total_taxable\", \"label\": \"Total Taxable Income\", \"fieldtype\": \"Currency\", \"width\": 140},\n        {\"fieldname\": \"tax_withheld\", \"label\": \"Tax Withheld (PAYE)\", \"fieldtype\": \"Currency\", \"width\": 140},\n        {\"fieldname\": \"cost_sharing\", \"label\": \"Cost Sharing\", \"fieldtype\": \"Currency\", \"width\": 100},\n        {\"fieldname\": \"net_pay\", \"label\": \"Net Pay\", \"fieldtype\": \"Currency\", \"width\": 120}\n    ]\n    \n    conditions = \"docstatus = 1\"\n    if filters.get(\"company\"): conditions += f\" AND company = '{filters.get('company')}'\"\n    if filters.get(\"from_date\"): conditions += f\" AND start_date >= '{filters.get('from_date')}'\"\n    if filters.get(\"to_date\"): conditions += f\" AND end_date <= '{filters.get('to_date')}'\"\n\n    slips = frappe.db.sql(f\"\"\"\n        SELECT \n            name,\n            employee_name as emp_name,\n            employee as emp_id,\n            gross_pay,\n            net_pay\n        FROM `tabSalary Slip`\n        WHERE {conditions}\n    \"\"\", as_dict=1)\n    \n    data = []\n    \n    for slip in slips:\n        emp_details = frappe.db.get_value(\"Employee\", slip.emp_id, [\"tax_id\"], as_dict=1)\n        emp_tin = emp_details.tax_id if emp_details else \"\"\n        \n        components = frappe.db.sql(f\"\"\"\n            SELECT salary_component, amount, type \n            FROM `tabSalary Detail` \n            WHERE parent = '{slip.name}'\n        \"\"\", as_dict=1)\n        \n        basic = 0\n        transport = 0\n        overtime = 0\n        other = 0\n        tax = 0\n        cost_share = 0\n        \n        for c in components:\n            if c.salary_component in [\"Basic Salary\", \"Basic\"]:\n                basic += c.amount\n            elif \"Transport\" in c.salary_component:\n                transport += c.amount \n            elif \"Overtime\" in c.salary_component:\n                overtime += c.amount\n            elif c.salary_component in [\"Income Tax\", \"PAYE\"]:\n                tax += c.amount\n            elif \"Cost Sharing\" in c.salary_component:\n                cost_share += c.amount\n            elif c.type == \"Earning\" and c.amount > 0:\n                other += c.amount \n        \n        other = other - basic - transport - overtime\n        if other < 0: other = 0\n\n        row = {\n            \"emp_tin\": emp_tin,\n            \"emp_name\": slip.emp_name,\n            \"basic_salary\": basic,\n            \"transport_taxable\": transport,\n            \"overtime\": overtime,\n            \"other_taxable\": other,\n            \"total_taxable\": slip.gross_pay,\n            \"tax_withheld\": tax,\n            \"cost_sharing\": cost_share,\n            \"net_pay\": slip.net_pay\n        }\n        data.append(row)\n    \n    \n    frappe.msgprint(f\"🔎 DEBUG: Query returned {len(data)} rows for range {filters.get('from_date')} to {filters.get('to_date')}\")\n    return columns, data\n",
+  "report_type": "Script Report",
+  "roles": [
+   {
+    "parent": "Ethiopia Schedule A",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "HR User"
+   },
+   {
+    "parent": "Ethiopia Schedule A",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Employee"
+   },
+   {
+    "parent": "Ethiopia Schedule A",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "HR Manager"
+   },
+   {
+    "parent": "Ethiopia Schedule A",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Employee Self Service"
+   },
+   {
+    "parent": "Ethiopia Schedule A",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Accounts Manager"
+   },
+   {
+    "parent": "Ethiopia Schedule A",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "System Manager"
+   }
+  ],
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": "[]",
+  "letter_head": null,
+  "modified": "2026-02-02 12:32:42.345017",
+  "module": "Ethiopia Compliance",
+  "name": "Direct SQL Check",
+  "prepared_report": 0,
+  "query": "\nSELECT\n    name as \"Invoice ID\",\n    posting_date as \"Date\",\n    company as \"Company Name\",\n    grand_total as \"Amount\",\n    status as \"Status\"\nFROM\n    `tabSales Invoice`\nORDER BY\n    posting_date DESC\nLIMIT 50\n    ",
+  "ref_doctype": "Sales Invoice",
+  "reference_report": null,
+  "report_name": "Direct SQL Check",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "parent": "Direct SQL Check",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Accounts User"
+   },
+   {
+    "parent": "Direct SQL Check",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Accounts Manager"
+   },
+   {
+    "parent": "Direct SQL Check",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Employee Self Service"
+   }
+  ],
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": "[]",
+  "letter_head": null,
+  "modified": "2026-02-02 12:37:00.091110",
+  "module": "Ethiopia Compliance",
+  "name": "TASS Sales Declaration",
+  "prepared_report": 0,
+  "query": "\n    SELECT\n        c.tax_id as \"Seller TIN\",\n        cust.tax_id as \"Buyer TIN\",\n        s.customer_name as \"Buyer Name\",\n        s.custom_fiscal_machine_no as \"MRC\",\n        s.custom_fs_number as \"FS No\",\n        s.posting_date as \"Date\",\n        s.grand_total as \"Amount\",\n        CASE WHEN s.docstatus = 0 THEN 'Draft' ELSE 'Submitted' END as \"Status\"\n    FROM\n        `tabSales Invoice` s\n        JOIN `tabCompany` c ON s.company = c.name\n        LEFT JOIN `tabCustomer` cust ON s.customer = cust.name\n    WHERE\n        s.docstatus < 2\n        AND s.company = 'BESPO'  -- <--- HARDCODED\n        AND s.posting_date >= '2025-01-01' -- <--- HARDCODED\n    ORDER BY s.posting_date DESC\n    ",
+  "ref_doctype": "Sales Invoice",
+  "reference_report": null,
+  "report_name": "TASS Sales Declaration",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "parent": "TASS Sales Declaration",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Accounts User"
+   },
+   {
+    "parent": "TASS Sales Declaration",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Accounts Manager"
+   },
+   {
+    "parent": "TASS Sales Declaration",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Employee Self Service"
+   }
+  ],
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": "[]",
+  "letter_head": null,
+  "modified": "2026-02-02 12:37:00.120798",
+  "module": "Ethiopia Compliance",
+  "name": "TASS Purchase Declaration",
+  "prepared_report": 0,
+  "query": "\n    SELECT\n        c.tax_id as \"Purchaser TIN\",\n        p.custom_supplier_tin as \"Seller TIN\",\n        p.bill_no as \"Receipt No\",\n        p.bill_date as \"Date\",\n        p.grand_total as \"Amount\",\n        'Goods' as \"Type\"\n    FROM\n        `tabPurchase Invoice` p\n        JOIN `tabCompany` c ON p.company = c.name\n    WHERE\n        p.docstatus = 1\n        AND p.company = 'BESPO' -- <--- HARDCODED\n        AND p.posting_date >= '2025-01-01'\n    ",
+  "ref_doctype": "Purchase Invoice",
+  "reference_report": null,
+  "report_name": "TASS Purchase Declaration",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "parent": "TASS Purchase Declaration",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Accounts User"
+   },
+   {
+    "parent": "TASS Purchase Declaration",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Purchase User"
+   },
+   {
+    "parent": "TASS Purchase Declaration",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Accounts Manager"
+   },
+   {
+    "parent": "TASS Purchase Declaration",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Auditor"
+   }
+  ],
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": "[]",
+  "letter_head": null,
+  "modified": "2026-02-02 12:37:00.144507",
+  "module": "Ethiopia Compliance",
+  "name": "SIGTAS Withholding Report",
+  "prepared_report": 0,
+  "query": "\n    SELECT\n        p.custom_supplier_tin as \"Supplier TIN\",\n        p.supplier_name as \"Supplier Name\",\n        p.bill_no as \"Invoice No\",\n        p.bill_date as \"Date\",\n        p.total as \"Taxable Amount\",\n        ABS(t.tax_amount) as \"Tax Withheld\"\n    FROM\n        `tabPurchase Taxes and Charges` t\n        JOIN `tabPurchase Invoice` p ON t.parent = p.name\n    WHERE\n        p.docstatus = 1\n        AND t.account_head LIKE '%Withholding%'\n        AND p.company = 'BESPO' -- <--- HARDCODED\n        AND p.posting_date >= '2025-01-01'\n    ",
+  "ref_doctype": "Purchase Invoice",
+  "reference_report": null,
+  "report_name": "SIGTAS Withholding Report",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "parent": "SIGTAS Withholding Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Accounts User"
+   },
+   {
+    "parent": "SIGTAS Withholding Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Purchase User"
+   },
+   {
+    "parent": "SIGTAS Withholding Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Accounts Manager"
+   },
+   {
+    "parent": "SIGTAS Withholding Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Auditor"
+   }
+  ],
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": "[]",
+  "letter_head": null,
+  "modified": "2026-02-02 13:00:21.917003",
+  "module": "Ethiopia Compliance",
+  "name": "TASS Purchase Excel Export",
+  "prepared_report": 0,
+  "query": "\n    SELECT\n        p.custom_supplier_tin as \"Supplier TIN\",\n        p.supplier_name as \"Supplier Name\",\n        p.bill_no as \"Invoice Number\",\n        DATE_FORMAT(p.bill_date, '%%d/%%m/%%Y') as \"Invoice Date\", -- DD/MM/YYYY Format\n        p.grand_total as \"Total Amount\",\n        CASE \n            WHEN EXISTS(SELECT 1 FROM `tabPurchase Invoice Item` pii \n                        LEFT JOIN `tabItem` i ON pii.item_code = i.name \n                        WHERE pii.parent = p.name AND i.is_stock_item = 0) \n            THEN 'Services' \n            ELSE 'Goods' \n        END as \"Purchase Type\"\n    FROM\n        `tabPurchase Invoice` p\n    WHERE\n        p.docstatus = 1\n        AND p.company = 'BESPO' -- Ensures only your company data\n    ORDER BY\n        p.bill_date DESC\n    ",
+  "ref_doctype": "Purchase Invoice",
+  "reference_report": null,
+  "report_name": "TASS Purchase Excel Export",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "parent": "TASS Purchase Excel Export",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Accounts User"
+   },
+   {
+    "parent": "TASS Purchase Excel Export",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Purchase User"
+   },
+   {
+    "parent": "TASS Purchase Excel Export",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Accounts Manager"
+   },
+   {
+    "parent": "TASS Purchase Excel Export",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Auditor"
+   }
+  ],
+  "timeout": 0
+ }
+]

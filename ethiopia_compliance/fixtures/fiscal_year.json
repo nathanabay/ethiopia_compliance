@@ -1,0 +1,22 @@
+[
+ {
+  "auto_created": 0,
+  "companies": [
+   {
+    "company": "BESPO",
+    "parent": "2017 E.C.",
+    "parentfield": "companies",
+    "parenttype": "Fiscal Year"
+   }
+  ],
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Fiscal Year",
+  "is_short_year": 0,
+  "modified": "2026-02-02 13:18:57.457504",
+  "name": "2017 E.C.",
+  "year": "2017 E.C.",
+  "year_end_date": "2025-09-10",
+  "year_start_date": "2024-09-11"
+ }
+]
