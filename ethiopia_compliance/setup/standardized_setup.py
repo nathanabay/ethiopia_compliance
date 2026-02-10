@@ -5,23 +5,49 @@ from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 def run():
     print("--- 🇪🇹 STARTING ETHIOPIA COMPLIANCE STANDARDIZED SETUP ---")
     
-    # 1. CONSOLIDATED CUSTOM FIELDS
+    # 1. COMPLIANCE SETTINGS (Moved to top to be available for others)
+    setup_compliance_settings()
+
+    # 2. CONSOLIDATED CUSTOM FIELDS
     setup_custom_fields()
     
-    # 2. INCOME TAX SLABS (2025/2026)
+    # 3. INCOME TAX SLABS (2025/2026)
     create_income_tax_slabs()
     
-    # 3. ACCOUNTS & TAX TEMPLATES
+    # 4. ACCOUNTS & TAX TEMPLATES
     setup_accounts_and_templates()
     
-    # 4. FISCAL YEAR (2017 E.C.)
+    # 5. FISCAL YEAR (2017 E.C.)
     setup_fiscal_year()
-
-    # 5. COMPLIANCE SETTINGS
-    setup_compliance_settings()
     
     frappe.db.commit()
     print("--- ✅ SUCCESS: ETHIOPIA COMPLIANCE STANDARDIZED ---")
+
+def setup_compliance_settings():
+    print("👉 Setting up Compliance Settings...")
+    try:
+        settings = frappe.get_single("Compliance Setting")
+        # Only set if not already set (to avoid overwriting user changes)
+        save_needed = False
+        if not settings.wht_goods_threshold:
+            settings.wht_goods_threshold = 10000
+            settings.wht_services_threshold = 3000
+            settings.wht_rate = 2
+            save_needed = True
+        
+        if not settings.vat_rate:
+            settings.vat_rate = 15
+            save_needed = True
+
+        if not settings.tot_rate:
+            settings.tot_rate = 2
+            save_needed = True
+            
+        if save_needed:
+            settings.save(ignore_permissions=True)
+
+    except Exception as e:
+        print(f"⚠️ Could not setup Compliance Settings: {e}")
 
 def setup_custom_fields():
     print("👉 Standardizing Custom Fields...")
@@ -86,6 +112,7 @@ def setup_custom_fields():
         {"fieldname": "custom_vat_registered", "label": "VAT Registered", "fieldtype": "Check", "insert_after": "custom_wht_eligible", "default": "1", "module": "Ethiopia Compliance"}
     ])
 
+    # Fix: Ensure fields are not duplicated
     if "Sales Invoice" not in custom_fields: custom_fields["Sales Invoice"] = []
     custom_fields["Sales Invoice"].extend([
         {"fieldname": "custom_fs_number", "label": "FS Number", "fieldtype": "Data", "insert_after": "taxes_and_charges", "description": "Fiscal Signature", "module": "Ethiopia Compliance"},
@@ -129,8 +156,14 @@ def setup_accounts_and_templates():
     company = frappe.defaults.get_user_default("Company")
     if not company: return
 
+    # Fetch settings
+    settings = frappe.get_single("Compliance Setting")
+    vat_rate = settings.vat_rate or 15
+    tot_rate = settings.tot_rate or 2
+
+    # Account Types
     accounts = [
-        ("Input VAT 15%", "Duties and Taxes", "Tax", "Asset"),
+        (f"Input VAT {vat_rate}%", "Duties and Taxes", "Tax", "Asset"),
         ("TOT Expense", "Direct Expenses", "Chargeable", "Expense"),
         ("Withholding Tax", "Duties and Taxes", "Tax", "Asset"),
         ("Customs Duty", "Direct Expenses", "Chargeable", "Expense"),
@@ -159,16 +192,19 @@ def setup_accounts_and_templates():
         return frappe.db.exists("Purchase Taxes and Charges Template", {"title": title, "company": company}) or \
                frappe.db.exists("Purchase Taxes and Charges Template", {"title": ["like", f"{title}%"], "company": company})
 
-    if "Input VAT 15%" in account_map and not template_exists("Ethiopia Local VAT 15%", company):
+    vat_title = f"Ethiopia Local VAT {vat_rate}%"
+    tot_title = f"Ethiopia Local TOT {tot_rate}%"
+
+    if f"Input VAT {vat_rate}%" in account_map and not template_exists(vat_title, company):
         frappe.get_doc({
-            "doctype": "Purchase Taxes and Charges Template", "title": "Ethiopia Local VAT 15%", "company": company,
-            "taxes": [{"charge_type": "On Net Total", "account_head": account_map["Input VAT 15%"], "description": "VAT 15%", "rate": 15}]
+            "doctype": "Purchase Taxes and Charges Template", "title": vat_title, "company": company,
+            "taxes": [{"charge_type": "On Net Total", "account_head": account_map[f"Input VAT {vat_rate}%"], "description": f"VAT {vat_rate}%", "rate": vat_rate}]
         }).insert(ignore_permissions=True)
 
-    if "TOT Expense" in account_map and not template_exists("Ethiopia Local TOT 2%", company):
+    if "TOT Expense" in account_map and not template_exists(tot_title, company):
         frappe.get_doc({
-            "doctype": "Purchase Taxes and Charges Template", "title": "Ethiopia Local TOT 2%", "company": company,
-            "taxes": [{"charge_type": "On Net Total", "account_head": account_map["TOT Expense"], "description": "TOT 2%", "rate": 2}]
+            "doctype": "Purchase Taxes and Charges Template", "title": tot_title, "company": company,
+            "taxes": [{"charge_type": "On Net Total", "account_head": account_map["TOT Expense"], "description": f"TOT {tot_rate}%", "rate": tot_rate}]
         }).insert(ignore_permissions=True)
 
 def setup_fiscal_year():
@@ -182,17 +218,3 @@ def setup_fiscal_year():
         company = frappe.defaults.get_user_default("Company")
         if company: doc.append("companies", {"company": company})
         doc.insert(ignore_permissions=True)
-
-def setup_compliance_settings():
-    print("👉 Setting up Compliance Settings...")
-    try:
-        settings = frappe.get_single("Compliance Setting")
-        # Only set if not already set (to avoid overwriting user changes)
-        if not settings.wht_goods_threshold:
-            settings.wht_goods_threshold = 10000
-            settings.wht_services_threshold = 3000
-            settings.wht_rate = 2
-            settings.vat_rate = 15
-            settings.save(ignore_permissions=True)
-    except Exception as e:
-        print(f"⚠️ Could not setup Compliance Settings: {e}")
