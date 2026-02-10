@@ -1,0 +1,58 @@
+[
+    {
+        "doctype": "Workflow",
+        "document_type": "Purchase Invoice",
+        "is_active": 1,
+        "module": "Ethiopia Compliance",
+        "name": "Purchase Invoice Workflow",
+        "states": [
+            {
+                "allow_edit": "System Manager",
+                "doc_status": 0,
+                "state": "Draft"
+            },
+            {
+                "allow_edit": "System Manager",
+                "doc_status": 0,
+                "state": "Reviewed"
+            },
+            {
+                "allow_edit": "System Manager",
+                "doc_status": 1,
+                "state": "Approved"
+            },
+            {
+                "allow_edit": "System Manager",
+                "doc_status": 2,
+                "state": "Rejected"
+            }
+        ],
+        "transitions": [
+            {
+                "action": "Review",
+                "allow": "System Manager",
+                "next_state": "Reviewed",
+                "state": "Draft"
+            },
+            {
+                "action": "Approve",
+                "allow": "System Manager",
+                "next_state": "Approved",
+                "state": "Reviewed"
+            },
+            {
+                "action": "Reject",
+                "allow": "System Manager",
+                "next_state": "Rejected",
+                "state": "Reviewed"
+            },
+            {
+                "action": "Reject",
+                "allow": "System Manager",
+                "next_state": "Rejected",
+                "state": "Draft"
+            }
+        ],
+        "workflow_name": "Purchase Invoice Workflow"
+    }
+]

@@ -16,6 +16,9 @@ def run():
     
     # 4. FISCAL YEAR (2017 E.C.)
     setup_fiscal_year()
+
+    # 5. COMPLIANCE SETTINGS
+    setup_compliance_settings()
     
     frappe.db.commit()
     print("--- ✅ SUCCESS: ETHIOPIA COMPLIANCE STANDARDIZED ---")
@@ -179,3 +182,17 @@ def setup_fiscal_year():
         company = frappe.defaults.get_user_default("Company")
         if company: doc.append("companies", {"company": company})
         doc.insert(ignore_permissions=True)
+
+def setup_compliance_settings():
+    print("👉 Setting up Compliance Settings...")
+    try:
+        settings = frappe.get_single("Compliance Setting")
+        # Only set if not already set (to avoid overwriting user changes)
+        if not settings.wht_goods_threshold:
+            settings.wht_goods_threshold = 10000
+            settings.wht_services_threshold = 3000
+            settings.wht_rate = 2
+            settings.vat_rate = 15
+            settings.save(ignore_permissions=True)
+    except Exception as e:
+        print(f"⚠️ Could not setup Compliance Settings: {e}")

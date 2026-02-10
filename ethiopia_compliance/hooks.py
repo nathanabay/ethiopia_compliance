@@ -12,6 +12,8 @@ fixtures = [
     {"dt": "Client Script", "filters": [["module", "=", "Ethiopia Compliance"]]},
     {"dt": "Server Script", "filters": [["module", "=", "Ethiopia Compliance"]]},
     {"dt": "Property Setter", "filters": [["module", "=", "Ethiopia Compliance"]]},
+    {"dt": "Workflow", "filters": [["module", "=", "Ethiopia Compliance"]]},
+    {"dt": "Workflow State", "filters": [["module", "=", "Ethiopia Compliance"]]},
     # Capture the specific 2017 EC Calendar we made
     {"dt": "Fiscal Year", "filters": [["name", "=", "2017 E.C."]]}
 ]

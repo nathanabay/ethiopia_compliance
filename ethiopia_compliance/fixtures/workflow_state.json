@@ -1,0 +1,30 @@
+[
+    {
+        "doctype": "Workflow State",
+        "module": "Ethiopia Compliance",
+        "name": "Draft",
+        "style": "Gray",
+        "workflow_state_name": "Draft"
+    },
+    {
+        "doctype": "Workflow State",
+        "module": "Ethiopia Compliance",
+        "name": "Reviewed",
+        "style": "Blue",
+        "workflow_state_name": "Reviewed"
+    },
+    {
+        "doctype": "Workflow State",
+        "module": "Ethiopia Compliance",
+        "name": "Approved",
+        "style": "Green",
+        "workflow_state_name": "Approved"
+    },
+    {
+        "doctype": "Workflow State",
+        "module": "Ethiopia Compliance",
+        "name": "Rejected",
+        "style": "Red",
+        "workflow_state_name": "Rejected"
+    }
+]
