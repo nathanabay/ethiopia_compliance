@@ -30,29 +30,30 @@
         "transitions": [
             {
                 "action": "Review",
-                "allow": "System Manager",
+                "allowed": "System Manager",
                 "next_state": "Reviewed",
                 "state": "Draft"
             },
             {
                 "action": "Approve",
-                "allow": "System Manager",
+                "allowed": "System Manager",
                 "next_state": "Approved",
                 "state": "Reviewed"
             },
             {
                 "action": "Reject",
-                "allow": "System Manager",
+                "allowed": "System Manager",
                 "next_state": "Rejected",
                 "state": "Reviewed"
             },
             {
                 "action": "Reject",
-                "allow": "System Manager",
+                "allowed": "System Manager",
                 "next_state": "Rejected",
                 "state": "Draft"
             }
         ],
-        "workflow_name": "Purchase Invoice Workflow"
+        "workflow_name": "Purchase Invoice Workflow",
+        "workflow_state_field": "workflow_state"
     }
 ]

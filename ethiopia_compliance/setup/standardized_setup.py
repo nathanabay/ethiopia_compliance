@@ -122,7 +122,8 @@ def setup_custom_fields():
     if "Purchase Invoice" not in custom_fields: custom_fields["Purchase Invoice"] = []
     custom_fields["Purchase Invoice"].extend([
         {"fieldname": "custom_supplier_tin", "label": "Supplier TIN", "fieldtype": "Data", "insert_after": "supplier_address", "fetch_from": "supplier.tax_id", "module": "Ethiopia Compliance"},
-        {"fieldname": "custom_wht_receipt_no", "label": "WHT Receipt Number", "fieldtype": "Data", "insert_after": "taxes_and_charges", "module": "Ethiopia Compliance"}
+        {"fieldname": "custom_wht_receipt_no", "label": "WHT Receipt Number", "fieldtype": "Data", "insert_after": "taxes_and_charges", "module": "Ethiopia Compliance"},
+        {"fieldname": "workflow_state", "label": "Workflow State", "fieldtype": "Link", "options": "Workflow State", "insert_after": "status", "module": "Ethiopia Compliance", "no_copy": 1}
     ])
 
     if "Item" not in custom_fields: custom_fields["Item"] = []
