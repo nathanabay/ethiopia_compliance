@@ -12,7 +12,13 @@
         "wht_account",
         "section_break_vat",
         "vat_rate",
-        "vat_account"
+        "vat_account",
+        "section_break_tot",
+        "tot_rate",
+        "tot_account",
+        "section_break_ethiopian",
+        "enable_ethiopian_calendar",
+        "ethiopian_calendar_help"
     ],
     "fields": [
         {
@@ -86,6 +92,23 @@
             "fieldtype": "Link",
             "label": "TOT Account",
             "options": "Account"
+        },
+        {
+            "fieldname": "section_break_ethiopian",
+            "fieldtype": "Section Break",
+            "label": "Ethiopian Calendar"
+        },
+        {
+            "default": "1",
+            "fieldname": "enable_ethiopian_calendar",
+            "fieldtype": "Check",
+            "label": "Enable Ethiopian Calendar"
+        },
+        {
+            "fieldname": "ethiopian_calendar_help",
+            "fieldtype": "HTML",
+            "label": "Calendar Help",
+            "options": "<p class=\"text-muted small\">When enabled, Ethiopian calendar fields will be added to date-based documents (Sales Invoice, Purchase Invoice, Payment Entry, etc.). The calendar automatically syncs between Gregorian and Ethiopian dates.</p>"
         }
     ],
     "index_web_pages_for_search": 1,

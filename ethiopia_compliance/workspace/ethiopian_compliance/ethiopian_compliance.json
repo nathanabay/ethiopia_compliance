@@ -1,0 +1,66 @@
+{
+    "charts": [],
+    "content": "[{\"id\":\"header1\",\"type\":\"header\",\"data\":{\"text\":\"🇪🇹 Ethiopian Compliance\",\"col\":12}},{\"id\":\"dashboard_section\",\"type\":\"header\",\"data\":{\"text\":\"📊 Dashboards \u0026 Tools\",\"col\":12}},{\"id\":\"dashboard_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Compliance Tools\",\"col\":4},\"links\":[{\"label\":\"Compliance Dashboard\",\"type\":\"Link\",\"name\":\"Compliance Dashboard\",\"onboard\":1,\"link_type\":\"Page\",\"link_to\":\"compliance-dashboard\",\"is_query_report\":0},{\"label\":\"TIN Bulk Validator\",\"type\":\"Link\",\"name\":\"TIN Bulk Validator\",\"link_type\":\"Page\",\"link_to\":\"tin-bulk-validator\",\"is_query_report\":0,\"description\":\"Validate multiple TINs at once\"}]},{\"id\":\"settings_section\",\"type\":\"header\",\"data\":{\"text\":\"⚙️ Settings \u0026 Configuration\",\"col\":12}},{\"id\":\"settings_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4},\"links\":[{\"label\":\"Compliance Setting\",\"type\":\"Link\",\"name\":\"Compliance Setting\",\"onboard\":1,\"link_type\":\"DocType\",\"link_to\":\"Compliance Setting\",\"is_query_report\":0,\"doc_type\":\"Compliance Setting\"},{\"label\":\"Income Tax Slab\",\"type\":\"Link\",\"name\":\"Income Tax Slab\",\"link_type\":\"DocType\",\"link_to\":\"Income Tax Slab\",\"is_query_report\":0,\"doc_type\":\"Income Tax Slab\"}]},{\"id\":\"tass_section\",\"type\":\"header\",\"data\":{\"text\":\"📋 TASS Reports\",\"col\":12}},{\"id\":\"tass_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Tax Reports\",\"col\":4},\"links\":[{\"label\":\"Tax Report\",\"type\":\"Link\",\"name\":\"Tax Report\",\"onboard\":0,\"link_type\":\"DocType\",\"link_to\":\"Tax Report\",\"is_query_report\":0,\"doc_type\":\"Tax Report\",\"description\":\"Generate VAT, WHT, and TOT reports\"},{\"label\":\"New VAT Report\",\"type\":\"Link\",\"name\":\"New VAT Report\",\"link_type\":\"DocType\",\"link_to\":\"Tax Report\",\"is_query_report\":0,\"doc_type\":\"Tax Report\",\"dependencies\":\"Tax Report\"},{\"label\":\"New WHT Report\",\"type\":\"Link\",\"name\":\"New WHT Report\",\"link_type\":\"DocType\",\"link_to\":\"Tax Report\",\"is_query_report\":0,\"doc_type\":\"Tax Report\",\"dependencies\":\"Tax Report\"}]},{\"id\":\"calendar_section\",\"type\":\"header\",\"data\":{\"text\":\"📅 Ethiopian Calendar\",\"col\":12}},{\"id\":\"calendar_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Calendar Settings\",\"col\":4},\"links\":[{\"label\":\"Enable Calendar\",\"type\":\"Link\",\"name\":\"Compliance Setting\",\"link_type\":\"DocType\",\"link_to\":\"Compliance Setting\",\"is_query_report\":0,\"doc_type\":\"Compliance Setting\",\"description\":\"Enable or disable Ethiopian calendar integration\"}]},{\"id\":\"accounting_section\",\"type\":\"header\",\"data\":{\"text\":\"💰 Accounting \u0026 Invoicing\",\"col\":12}},{\"id\":\"sales_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Sales\",\"col\":4},\"links\":[{\"label\":\"Sales Invoice\",\"type\":\"Link\",\"name\":\"Sales Invoice\",\"link_type\":\"DocType\",\"link_to\":\"Sales Invoice\",\"is_query_report\":0,\"doc_type\":\"Sales Invoice\"},{\"label\":\"Sales Order\",\"type\":\"Link\",\"name\":\"Sales Order\",\"link_type\":\"DocType\",\"link_to\":\"Sales Order\",\"is_query_report\":0,\"doc_type\":\"Sales Order\"}]},{\"id\":\"purchase_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Purchases\",\"col\":4},\"links\":[{\"label\":\"Purchase Invoice\",\"type\":\"Link\",\"name\":\"Purchase Invoice\",\"link_type\":\"DocType\",\"link_to\":\"Purchase Invoice\",\"is_query_report\":0,\"doc_type\":\"Purchase Invoice\"},{\"label\":\"Purchase Order\",\"type\":\"Link\",\"name\":\"Purchase Order\",\"link_type\":\"DocType\",\"link_to\":\"Purchase Order\",\"is_query_report\":0,\"doc_type\":\"Purchase Order\"}]},{\"id\":\"payments_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Payments\",\"col\":4},\"links\":[{\"label\":\"Payment Entry\",\"type\":\"Link\",\"name\":\"Payment Entry\",\"link_type\":\"DocType\",\"link_to\":\"Payment Entry\",\"is_query_report\":0,\"doc_type\":\"Payment Entry\"},{\"label\":\"Journal Entry\",\"type\":\"Link\",\"name\":\"Journal Entry\",\"link_type\":\"DocType\",\"link_to\":\"Journal Entry\",\"is_query_report\":0,\"doc_type\":\"Journal Entry\"}]},{\"id\":\"tax_section\",\"type\":\"header\",\"data\":{\"text\":\"💵 Tax Compliance\",\"col\":12}},{\"id\":\"tax_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Tax Management\",\"col\":4},\"links\":[{\"label\":\"WHT Settings\",\"type\":\"Link\",\"name\":\"Compliance Setting\",\"link_type\":\"DocType\",\"link_to\":\"Compliance Setting\",\"is_query_report\":0,\"doc_type\":\"Compliance Setting\",\"description\":\"Configure Withholding Tax rates and thresholds\"},{\"label\":\"VAT Settings\",\"type\":\"Link\",\"name\":\"Compliance Setting\",\"link_type\":\"DocType\",\"link_to\":\"Compliance Setting\",\"is_query_report\":0,\"doc_type\":\"Compliance Setting\",\"description\":\"Configure VAT rates and accounts\"},{\"label\":\"TOT Settings\",\"type\":\"Link\",\"name\":\"Compliance Setting\",\"link_type\":\"DocType\",\"link_to\":\"Compliance Setting\",\"is_query_report\":0,\"doc_type\":\"Compliance Setting\",\"description\":\"Configure Turnover Tax settings\"}]},{\"id\":\"masters_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4},\"links\":[{\"label\":\"Supplier\",\"type\":\"Link\",\"name\":\"Supplier\",\"link_type\":\"DocType\",\"link_to\":\"Supplier\",\"is_query_report\":0,\"doc_type\":\"Supplier\"},{\"label\":\"Item\",\"type\":\"Link\",\"name\":\"Item\",\"link_type\":\"DocType\",\"link_to\":\"Item\",\"is_query_report\":0,\"doc_type\":\"Item\"},{\"label\":\"Company\",\"type\":\"Link\",\"name\":\"Company\",\"link_type\":\"DocType\",\"link_to\":\"Company\",\"is_query_report\":0,\"doc_type\":\"Company\"}]},{\"id\":\"hr_section\",\"type\":\"header\",\"data\":{\"text\":\"👥 Human Resources\",\"col\":12}},{\"id\":\"hr_card\",\"type\":\"card\",\"data\":{\"card_name\":\"HR \u0026 Payroll\",\"col\":4},\"links\":[{\"label\":\"Employee\",\"type\":\"Link\",\"name\":\"Employee\",\"link_type\":\"DocType\",\"link_to\":\"Employee\",\"is_query_report\":0,\"doc_type\":\"Employee\"},{\"label\":\"Salary Slip\",\"type\":\"Link\",\"name\":\"Salary Slip\",\"link_type\":\"DocType\",\"link_to\":\"Salary Slip\",\"is_query_report\":0,\"doc_type\":\"Salary Slip\"},{\"label\":\"Leave Application\",\"type\":\"Link\",\"name\":\"Leave Application\",\"link_type\":\"DocType\",\"link_to\":\"Leave Application\",\"is_query_report\":0,\"doc_type\":\"Leave Application\"},{\"label\":\"Attendance\",\"type\":\"Link\",\"name\":\"Attendance\",\"link_type\":\"DocType\",\"link_to\":\"Attendance\",\"is_query_report\":0,\"doc_type\":\"Attendance\"}]},{\"id\":\"stock_section\",\"type\":\"header\",\"data\":{\"text\":\"📦 Inventory\",\"col\":12}},{\"id\":\"stock_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Stock Management\",\"col\":4},\"links\":[{\"label\":\"Stock Entry\",\"type\":\"Link\",\"name\":\"Stock Entry\",\"link_type\":\"DocType\",\"link_to\":\"Stock Entry\",\"is_query_report\":0,\"doc_type\":\"Stock Entry\"},{\"label\":\"Delivery Note\",\"type\":\"Link\",\"name\":\"Delivery Note\",\"link_type\":\"DocType\",\"link_to\":\"Delivery Note\",\"is_query_report\":0,\"doc_type\":\"Delivery Note\"},{\"label\":\"Purchase Receipt\",\"type\":\"Link\",\"name\":\"Purchase Receipt\",\"link_type\":\"DocType\",\"link_to\":\"Purchase Receipt\",\"is_query_report\":0,\"doc_type\":\"Purchase Receipt\"}]}]",
+    "creation": "2026-02-16 15:41:00.000000",
+    "custom_blocks": [],
+    "docstatus": 0,
+    "doctype": "Workspace",
+    "for_user": "",
+    "hide_custom": 0,
+    "icon": "accounting",
+    "idx": 0,
+    "is_hidden": 0,
+    "label": "Ethiopian Compliance",
+    "links": [],
+    "modified": "2026-02-16 15:41:00.000000",
+    "modified_by": "Administrator",
+    "module": "Ethiopia Compliance",
+    "name": "Ethiopian Compliance",
+    "number_cards": [],
+    "onboarding": "",
+    "owner": "Administrator",
+    "parent_page": "",
+    "public": 1,
+    "quick_lists": [],
+    "roles": [],
+    "sequence_id": 20.0,
+    "shortcuts": [
+        {
+            "color": "Green",
+            "doc_view": "",
+            "format": "{} Open",
+            "label": "Compliance Dashboard",
+            "link_to": "compliance-dashboard",
+            "stats_filter": "{}",
+            "type": "Page"
+        },
+        {
+            "color": "Blue",
+            "doc_view": "List",
+            "format": "{} Open",
+            "label": "Tax Report",
+            "link_to": "Tax Report",
+            "stats_filter": "{\"docstatus\": 0}",
+            "type": "DocType"
+        },
+        {
+            "color": "Orange",
+            "doc_view": "List",
+            "format": "{} Open",
+            "label": "Sales Invoice",
+            "link_to": "Sales Invoice",
+            "stats_filter": "{\"docstatus\": 0}",
+            "type": "DocType"
+        },
+        {
+            "color": "Purple",
+            "doc_view": "List",
+            "format": "{} Open",
+            "label": "Purchase Invoice",
+            "link_to": "Purchase Invoice",
+            "stats_filter": "{\"docstatus\": 0}",
+            "type": "DocType"
+        }
+    ],
+    "title": "Ethiopian Compliance"
+}

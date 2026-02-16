@@ -14,6 +14,7 @@ fixtures = [
     {"dt": "Property Setter", "filters": [["module", "=", "Ethiopia Compliance"]]},
     {"dt": "Workflow", "filters": [["module", "=", "Ethiopia Compliance"]]},
     {"dt": "Workflow State", "filters": [["module", "=", "Ethiopia Compliance"]]},
+    {"dt": "Workspace", "filters": [["module", "=", "Ethiopia Compliance"]]},
     # Capture the specific 2017 EC Calendar we made
     {"dt": "Fiscal Year", "filters": [["name", "=", "2017 E.C."]]}
 ]
@@ -27,7 +28,10 @@ doc_events = {
 }
 
 # --- 3. GLOBAL ASSETS ---
-app_include_js = "/assets/ethiopia_compliance/js/ethiopian_calendar.js"
+app_include_js = [
+    "/assets/ethiopia_compliance/js/ethiopian_calendar.js",
+    "/assets/ethiopia_compliance/js/tin_validation.js"
+]
 
 # --- 4. REQUIRED APPS ---
 required_apps = ["erpnext"]

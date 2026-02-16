@@ -2,76 +2,114 @@
 // ethiopian_calendar.js
 // Standardized UI logic for Ethiopian Calendar integration
 
+// Cache the calendar enabled status
+let calendar_enabled = null;
+
+// Check if Ethiopian calendar is enabled in settings
+function check_calendar_enabled(callback) {
+    if (calendar_enabled !== null) {
+        callback(calendar_enabled);
+        return;
+    }
+
+    frappe.call({
+        method: 'frappe.client.get_single',
+        args: { doctype: 'Compliance Setting' },
+        callback: function (r) {
+            if (r.message && r.message.enable_ethiopian_calendar !== undefined) {
+                calendar_enabled = r.message.enable_ethiopian_calendar;
+            } else {
+                // Default to enabled if setting doesn't exist (backward compatibility)
+                calendar_enabled = 1;
+            }
+            callback(calendar_enabled);
+        },
+        error: function () {
+            // Default to enabled if error fetching settings
+            calendar_enabled = 1;
+            callback(calendar_enabled);
+        }
+    });
+}
+
 $(document).on('app_ready', function () {
-    // Standardize field mapping based on Doctype
-    const date_field_map = {
-        "Sales Invoice": "posting_date",
-        "Purchase Invoice": "posting_date",
-        "Journal Entry": "posting_date",
-        "Payment Entry": "posting_date",
-        "Purchase Order": "transaction_date",
-        "Sales Order": "transaction_date",
-        "Leave Application": "from_date",
-        "Attendance": "attendance_date",
-        "Salary Slip": "start_date",
-        "Employee": "date_of_joining",
-        "Expense Claim": "posting_date",
-        "Job Offer": "date_of_joining",
-        "Stock Entry": "posting_date",
-        "Delivery Note": "posting_date",
-        "Purchase Receipt": "posting_date",
-        "Material Request": "transaction_date",
-        "Stock Reconciliation": "posting_date",
-        "Project": "expected_start_date",
-        "Asset": "purchase_date"
-    };
+    // Check if calendar is enabled before initializing
+    check_calendar_enabled(function (is_enabled) {
+        if (!is_enabled) {
+            console.log('Ethiopian Calendar is disabled in Compliance Settings');
+            return;
+        }
 
-    const target_doctypes = Object.keys(date_field_map);
+        // Standardize field mapping based on Doctype
+        const date_field_map = {
+            "Sales Invoice": "posting_date",
+            "Purchase Invoice": "posting_date",
+            "Journal Entry": "posting_date",
+            "Payment Entry": "posting_date",
+            "Purchase Order": "transaction_date",
+            "Sales Order": "transaction_date",
+            "Leave Application": "from_date",
+            "Attendance": "attendance_date",
+            "Salary Slip": "start_date",
+            "Employee": "date_of_joining",
+            "Expense Claim": "posting_date",
+            "Job Offer": "date_of_joining",
+            "Stock Entry": "posting_date",
+            "Delivery Note": "posting_date",
+            "Purchase Receipt": "posting_date",
+            "Material Request": "transaction_date",
+            "Stock Reconciliation": "posting_date",
+            "Project": "expected_start_date",
+            "Asset": "purchase_date"
+        };
 
-    target_doctypes.forEach(dt => {
-        frappe.ui.form.on(dt, {
-            refresh: function (frm) {
-                // Bind click event to trigger the selector
-                if (frm.fields_dict['ethiopian_date']) {
-                    frm.fields_dict['ethiopian_date'].$input.on('click', function () {
-                        if (!frm.selector_open) {
-                            show_ethiopian_selector(frm);
-                        }
-                    });
-                }
+        const target_doctypes = Object.keys(date_field_map);
 
-                // Auto-sync on load if EC date is missing
-                let fieldname = date_field_map[dt];
-                if (frm.doc[fieldname] && !frm.doc.ethiopian_date) {
-                    sync_to_ethiopian(frm, fieldname);
-                }
-            },
+        target_doctypes.forEach(dt => {
+            frappe.ui.form.on(dt, {
+                refresh: function (frm) {
+                    // Bind click event to trigger the selector
+                    if (frm.fields_dict['ethiopian_date']) {
+                        frm.fields_dict['ethiopian_date'].$input.on('click', function () {
+                            if (!frm.selector_open) {
+                                show_ethiopian_selector(frm);
+                            }
+                        });
+                    }
 
-            // Sync triggers for all possible date fields
-            posting_date: function (frm) { sync_to_ethiopian(frm, 'posting_date'); },
-            transaction_date: function (frm) { sync_to_ethiopian(frm, 'transaction_date'); },
-            attendance_date: function (frm) { sync_to_ethiopian(frm, 'attendance_date'); },
-            from_date: function (frm) { sync_to_ethiopian(frm, 'from_date'); },
-            date_of_joining: function (frm) { sync_to_ethiopian(frm, 'date_of_joining'); },
-            purchase_date: function (frm) { sync_to_ethiopian(frm, 'purchase_date'); },
+                    // Auto-sync on load if EC date is missing
+                    let fieldname = date_field_map[dt];
+                    if (frm.doc[fieldname] && !frm.doc.ethiopian_date) {
+                        sync_to_ethiopian(frm, fieldname);
+                    }
+                },
 
-            ethiopian_date: function (frm) {
-                if (frm.doc.ethiopian_date && frm.doc.ethiopian_date.length >= 8) {
-                    frappe.call({
-                        method: "ethiopia_compliance.utils.get_gc_date",
-                        args: { ethiopian_date: frm.doc.ethiopian_date },
-                        callback: function (r) {
-                            if (r.message) {
-                                let target = date_field_map[dt];
-                                if (frm.doc[target] !== r.message) {
-                                    frm.set_value(target, r.message);
-                                    frappe.show_alert({ message: __("Synced to Gregorian"), indicator: "green" });
+                // Sync triggers for all possible date fields
+                posting_date: function (frm) { sync_to_ethiopian(frm, 'posting_date'); },
+                transaction_date: function (frm) { sync_to_ethiopian(frm, 'transaction_date'); },
+                attendance_date: function (frm) { sync_to_ethiopian(frm, 'attendance_date'); },
+                from_date: function (frm) { sync_to_ethiopian(frm, 'from_date'); },
+                date_of_joining: function (frm) { sync_to_ethiopian(frm, 'date_of_joining'); },
+                purchase_date: function (frm) { sync_to_ethiopian(frm, 'purchase_date'); },
+
+                ethiopian_date: function (frm) {
+                    if (frm.doc.ethiopian_date && frm.doc.ethiopian_date.length >= 8) {
+                        frappe.call({
+                            method: "ethiopia_compliance.utils.get_gc_date",
+                            args: { ethiopian_date: frm.doc.ethiopian_date },
+                            callback: function (r) {
+                                if (r.message) {
+                                    let target = date_field_map[dt];
+                                    if (frm.doc[target] !== r.message) {
+                                        frm.set_value(target, r.message);
+                                        frappe.show_alert({ message: __("Synced to Gregorian"), indicator: "green" });
+                                    }
                                 }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
-            }
+            });
         });
     });
 });

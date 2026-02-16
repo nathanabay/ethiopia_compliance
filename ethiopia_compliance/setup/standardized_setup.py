@@ -42,12 +42,18 @@ def setup_compliance_settings():
         if not settings.tot_rate:
             settings.tot_rate = 2
             save_needed = True
+        
+        # Initialize Ethiopian calendar setting (default to enabled for backward compatibility)
+        if not hasattr(settings, 'enable_ethiopian_calendar') or settings.enable_ethiopian_calendar is None:
+            settings.enable_ethiopian_calendar = 1
+            save_needed = True
             
         if save_needed:
             settings.save(ignore_permissions=True)
 
     except Exception as e:
         print(f"⚠️ Could not setup Compliance Settings: {e}")
+
 
 def setup_custom_fields():
     print("👉 Standardizing Custom Fields...")
