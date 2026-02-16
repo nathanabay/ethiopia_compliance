@@ -16,6 +16,16 @@
         "section_break_tot",
         "tot_rate",
         "tot_account",
+        "section_break_excise",
+        "enable_excise_tax",
+        "column_break_excise",
+        "excise_tax_account",
+        "section_break_fiscal",
+        "enable_fiscal_device",
+        "fiscal_device_type",
+        "column_break_fiscal",
+        "device_serial_number",
+        "fiscal_device_api_endpoint",
         "section_break_ethiopian",
         "enable_ethiopian_calendar",
         "ethiopian_calendar_help"
@@ -92,6 +102,62 @@
             "fieldtype": "Link",
             "label": "TOT Account",
             "options": "Account"
+        },
+        {
+            "fieldname": "section_break_excise",
+            "fieldtype": "Section Break",
+            "label": "Excise Tax Settings"
+        },
+        {
+            "fieldname": "enable_excise_tax",
+            "fieldtype": "Check",
+            "label": "Enable Excise Tax",
+            "default": "0"
+        },
+        {
+            "fieldname": "column_break_excise",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "excise_tax_account",
+            "fieldtype": "Link",
+            "label": "Excise Tax Account",
+            "options": "Account",
+            "depends_on": "enable_excise_tax"
+        },
+        {
+            "fieldname": "section_break_fiscal",
+            "fieldtype": "Section Break",
+            "label": "Fiscal Device Integration"
+        },
+        {
+            "fieldname": "enable_fiscal_device",
+            "fieldtype": "Check",
+            "label": "Enable Fiscal Device",
+            "default": "0"
+        },
+        {
+            "fieldname": "fiscal_device_type",
+            "fieldtype": "Select",
+            "label": "Fiscal Device Type",
+            "options": "\nNexGo\nEFD\nOther",
+            "depends_on": "enable_fiscal_device"
+        },
+        {
+            "fieldname": "column_break_fiscal",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "device_serial_number",
+            "fieldtype": "Data",
+            "label": "Device Serial Number",
+            "depends_on": "enable_fiscal_device"
+        },
+        {
+            "fieldname": "fiscal_device_api_endpoint",
+            "fieldtype": "Data",
+            "label": "API Endpoint (if applicable)",
+            "depends_on": "enable_fiscal_device"
         },
         {
             "fieldname": "section_break_ethiopian",

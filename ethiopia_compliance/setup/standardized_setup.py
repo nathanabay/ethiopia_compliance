@@ -133,7 +133,11 @@ def setup_custom_fields():
     ])
 
     if "Item" not in custom_fields: custom_fields["Item"] = []
-    custom_fields["Item"].append({"fieldname": "custom_hs_code", "label": "HS Code", "fieldtype": "Data", "insert_after": "item_group", "module": "Ethiopia Compliance"})
+    custom_fields["Item"].extend([
+        {"fieldname": "custom_hs_code", "label": "HS Code", "fieldtype": "Data", "insert_after": "item_group", "module": "Ethiopia Compliance"},
+        {"fieldname": "custom_excise_tax_rate", "label": "Excise Tax Rate (%)", "fieldtype": "Percent", "insert_after": "custom_hs_code", "module": "Ethiopia Compliance"},
+        {"fieldname": "custom_excise_tax_category", "label": "Excise Tax Category", "fieldtype": "Select", "options": "\nBeverages\nTobacco\nFuel\nVehicles\nOther", "insert_after": "custom_excise_tax_rate", "module": "Ethiopia Compliance"}
+    ])
 
     create_custom_fields(custom_fields, update=True)
 

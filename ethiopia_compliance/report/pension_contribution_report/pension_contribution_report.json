@@ -1,0 +1,102 @@
+{
+    "add_total_row": 1,
+    "columns": [
+        {
+            "fieldname": "employee",
+            "label": "Employee",
+            "fieldtype": "Link",
+            "options": "Employee",
+            "width": 120
+        },
+        {
+            "fieldname": "employee_name",
+            "label": "Employee Name",
+            "fieldtype": "Data",
+            "width": 150
+        },
+        {
+            "fieldname": "pension_number",
+            "label": "Pension No.",
+            "fieldtype": "Data",
+            "width": 120
+        },
+        {
+            "fieldname": "basic_salary",
+            "label": "Basic Salary",
+            "fieldtype": "Currency",
+            "width": 120
+        },
+        {
+            "fieldname": "gross_pay",
+            "label": "Gross Pay",
+            "fieldtype": "Currency",
+            "width": 120
+        },
+        {
+            "fieldname": "org_pension",
+            "label": "Org. Pension (11%)",
+            "fieldtype": "Currency",
+            "width": 120
+        },
+        {
+            "fieldname": "emp_pension",
+            "label": "Emp. Pension (7%)",
+            "fieldtype": "Currency",
+            "width": 120
+        },
+        {
+            "fieldname": "total_pension",
+            "label": "Total Pension",
+            "fieldtype": "Currency",
+            "width": 120
+        }
+    ],
+    "creation": "2026-02-16 13:00:00.000000",
+    "doctype": "Report",
+    "engine": "InnoDB",
+    "filters": [
+        {
+            "fieldname": "company",
+            "label": "Company",
+            "fieldtype": "Link",
+            "options": "Company",
+            "default": "Bespo",
+            "reqd": 1
+        },
+        {
+            "fieldname": "month",
+            "label": "Month",
+            "fieldtype": "Select",
+            "options": "\nJanuary\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember",
+            "default": "February",
+            "reqd": 1
+        },
+        {
+            "fieldname": "year",
+            "label": "Year",
+            "fieldtype": "Select",
+            "options": "2024\n2025\n2026\n2027",
+            "default": "2026",
+            "reqd": 1
+        }
+    ],
+    "is_standard": "Yes",
+    "letter_head": "Standard",
+    "modified": "2026-02-16 13:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Ethiopia Compliance",
+    "name": "Pension Contribution Report",
+    "owner": "Administrator",
+    "prepared_report": 0,
+    "ref_doctype": "Salary Slip",
+    "report_name": "Pension Contribution Report",
+    "report_type": "Script Report",
+    "roles": [
+        {
+            "role": "HR Manager"
+        },
+        {
+            "role": "Accounts Manager"
+        }
+    ]
+}

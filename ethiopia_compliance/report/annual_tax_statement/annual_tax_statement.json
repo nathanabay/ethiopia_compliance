@@ -1,0 +1,94 @@
+{
+    "add_total_row": 1,
+    "columns": [
+        {
+            "fieldname": "employee",
+            "label": "Employee",
+            "fieldtype": "Link",
+            "options": "Employee",
+            "width": 120
+        },
+        {
+            "fieldname": "employee_name",
+            "label": "Employee Name",
+            "fieldtype": "Data",
+            "width": 150
+        },
+        {
+            "fieldname": "tin_number",
+            "label": "TIN Number",
+            "fieldtype": "Data",
+            "width": 120
+        },
+        {
+            "fieldname": "total_gross_pay",
+            "label": "Total Gross Pay",
+            "fieldtype": "Currency",
+            "width": 120
+        },
+        {
+            "fieldname": "total_taxable_income",
+            "label": "Total Taxable Income",
+            "fieldtype": "Currency",
+            "width": 140
+        },
+        {
+            "fieldname": "total_income_tax",
+            "label": "Total Income Tax",
+            "fieldtype": "Currency",
+            "width": 120
+        },
+        {
+            "fieldname": "total_pension",
+            "label": "Total Pension (7%)",
+            "fieldtype": "Currency",
+            "width": 120
+        },
+        {
+            "fieldname": "net_pay",
+            "label": "Total Net Pay",
+            "fieldtype": "Currency",
+            "width": 120
+        }
+    ],
+    "creation": "2026-02-16 13:00:00.000000",
+    "doctype": "Report",
+    "engine": "InnoDB",
+    "filters": [
+        {
+            "fieldname": "company",
+            "label": "Company",
+            "fieldtype": "Link",
+            "options": "Company",
+            "default": "Bespo",
+            "reqd": 1
+        },
+        {
+            "fieldname": "year",
+            "label": "Year",
+            "fieldtype": "Select",
+            "options": "2024\n2025\n2026\n2027",
+            "default": "2026",
+            "reqd": 1
+        }
+    ],
+    "is_standard": "Yes",
+    "letter_head": "Standard",
+    "modified": "2026-02-16 13:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Ethiopia Compliance",
+    "name": "Annual Tax Statement",
+    "owner": "Administrator",
+    "prepared_report": 0,
+    "ref_doctype": "Salary Slip",
+    "report_name": "Annual Tax Statement",
+    "report_type": "Script Report",
+    "roles": [
+        {
+            "role": "HR Manager"
+        },
+        {
+            "role": "Accounts Manager"
+        }
+    ]
+}
