@@ -9,9 +9,9 @@
   "filters": [],
   "is_standard": "No",
   "javascript": null,
-  "json": "[{\"fieldname\": \"company\", \"label\": \"Company\", \"fieldtype\": \"Link\", \"options\": \"Company\", \"default\": \"BESPO\", \"reqd\": 1}, {\"fieldname\": \"from_date\", \"label\": \"From Date\", \"fieldtype\": \"Date\", \"default\": \"2026-01-01\", \"reqd\": 1}, {\"fieldname\": \"to_date\", \"label\": \"To Date\", \"fieldtype\": \"Date\", \"default\": \"2026-02-02\", \"reqd\": 1}]",
+  "json": "[{\"fieldname\": \"company\", \"label\": \"Company\", \"fieldtype\": \"Link\", \"options\": \"Company\", \"reqd\": 1}, {\"fieldname\": \"from_date\", \"label\": \"From Date\", \"fieldtype\": \"Date\", \"reqd\": 1}, {\"fieldname\": \"to_date\", \"label\": \"To Date\", \"fieldtype\": \"Date\", \"reqd\": 1}]",
   "letter_head": null,
-  "modified": "2026-02-02 12:22:58.251956",
+  "modified": "2026-04-30 00:00:00.000000",
   "module": "Ethiopia Compliance",
   "name": "Ethiopia Schedule A",
   "prepared_report": 0,
@@ -19,7 +19,7 @@
   "ref_doctype": "Salary Slip",
   "reference_report": null,
   "report_name": "Ethiopia Schedule A",
-  "report_script": "\ndef execute(filters=None):\n    columns = [\n        {\"fieldname\": \"emp_tin\", \"label\": \"Employee TIN\", \"fieldtype\": \"Data\", \"width\": 140},\n        {\"fieldname\": \"emp_name\", \"label\": \"Employee Name\", \"fieldtype\": \"Data\", \"width\": 200},\n        {\"fieldname\": \"basic_salary\", \"label\": \"Basic Salary\", \"fieldtype\": \"Currency\", \"width\": 120},\n        {\"fieldname\": \"transport_taxable\", \"label\": \"Taxable Transport\", \"fieldtype\": \"Currency\", \"width\": 120},\n        {\"fieldname\": \"overtime\", \"label\": \"Overtime\", \"fieldtype\": \"Currency\", \"width\": 100},\n        {\"fieldname\": \"other_taxable\", \"label\": \"Other Taxable\", \"fieldtype\": \"Currency\", \"width\": 120},\n        {\"fieldname\": \"total_taxable\", \"label\": \"Total Taxable Income\", \"fieldtype\": \"Currency\", \"width\": 140},\n        {\"fieldname\": \"tax_withheld\", \"label\": \"Tax Withheld (PAYE)\", \"fieldtype\": \"Currency\", \"width\": 140},\n        {\"fieldname\": \"cost_sharing\", \"label\": \"Cost Sharing\", \"fieldtype\": \"Currency\", \"width\": 100},\n        {\"fieldname\": \"net_pay\", \"label\": \"Net Pay\", \"fieldtype\": \"Currency\", \"width\": 120}\n    ]\n    \n    conditions = \"docstatus = 1\"\n    if filters.get(\"company\"): conditions += f\" AND company = '{filters.get('company')}'\"\n    if filters.get(\"from_date\"): conditions += f\" AND start_date >= '{filters.get('from_date')}'\"\n    if filters.get(\"to_date\"): conditions += f\" AND end_date <= '{filters.get('to_date')}'\"\n\n    slips = frappe.db.sql(f\"\"\"\n        SELECT \n            name,\n            employee_name as emp_name,\n            employee as emp_id,\n            gross_pay,\n            net_pay\n        FROM `tabSalary Slip`\n        WHERE {conditions}\n    \"\"\", as_dict=1)\n    \n    data = []\n    \n    for slip in slips:\n        emp_details = frappe.db.get_value(\"Employee\", slip.emp_id, [\"tax_id\"], as_dict=1)\n        emp_tin = emp_details.tax_id if emp_details else \"\"\n        \n        components = frappe.db.sql(f\"\"\"\n            SELECT salary_component, amount, type \n            FROM `tabSalary Detail` \n            WHERE parent = '{slip.name}'\n        \"\"\", as_dict=1)\n        \n        basic = 0\n        transport = 0\n        overtime = 0\n        other = 0\n        tax = 0\n        cost_share = 0\n        \n        for c in components:\n            if c.salary_component in [\"Basic Salary\", \"Basic\"]:\n                basic += c.amount\n            elif \"Transport\" in c.salary_component:\n                transport += c.amount \n            elif \"Overtime\" in c.salary_component:\n                overtime += c.amount\n            elif c.salary_component in [\"Income Tax\", \"PAYE\"]:\n                tax += c.amount\n            elif \"Cost Sharing\" in c.salary_component:\n                cost_share += c.amount\n            elif c.type == \"Earning\" and c.amount > 0:\n                other += c.amount \n        \n        other = other - basic - transport - overtime\n        if other < 0: other = 0\n\n        row = {\n            \"emp_tin\": emp_tin,\n            \"emp_name\": slip.emp_name,\n            \"basic_salary\": basic,\n            \"transport_taxable\": transport,\n            \"overtime\": overtime,\n            \"other_taxable\": other,\n            \"total_taxable\": slip.gross_pay,\n            \"tax_withheld\": tax,\n            \"cost_sharing\": cost_share,\n            \"net_pay\": slip.net_pay\n        }\n        data.append(row)\n    \n    \n    frappe.msgprint(f\"🔎 DEBUG: Query returned {len(data)} rows for range {filters.get('from_date')} to {filters.get('to_date')}\")\n    return columns, data\n",
+  "report_script": "\ndef execute(filters=None):\n    import frappe\n    from collections import defaultdict\n\n    columns = [\n        {\"fieldname\": \"emp_tin\", \"label\": \"Employee TIN\", \"fieldtype\": \"Data\", \"width\": 140},\n        {\"fieldname\": \"emp_name\", \"label\": \"Employee Name\", \"fieldtype\": \"Data\", \"width\": 200},\n        {\"fieldname\": \"basic_salary\", \"label\": \"Basic Salary\", \"fieldtype\": \"Currency\", \"width\": 120},\n        {\"fieldname\": \"transport_taxable\", \"label\": \"Taxable Transport\", \"fieldtype\": \"Currency\", \"width\": 120},\n        {\"fieldname\": \"overtime\", \"label\": \"Overtime\", \"fieldtype\": \"Currency\", \"width\": 100},\n        {\"fieldname\": \"other_taxable\", \"label\": \"Other Taxable\", \"fieldtype\": \"Currency\", \"width\": 120},\n        {\"fieldname\": \"total_taxable\", \"label\": \"Total Taxable Income\", \"fieldtype\": \"Currency\", \"width\": 140},\n        {\"fieldname\": \"tax_withheld\", \"label\": \"Tax Withheld (PAYE)\", \"fieldtype\": \"Currency\", \"width\": 140},\n        {\"fieldname\": \"cost_sharing\", \"label\": \"Cost Sharing\", \"fieldtype\": \"Currency\", \"width\": 100},\n        {\"fieldname\": \"net_pay\", \"label\": \"Net Pay\", \"fieldtype\": \"Currency\", \"width\": 120}\n    ]\n\n    conditions = [\"docstatus = 1\"]\n    values = {}\n    if filters.get(\"company\"):\n        conditions.append(\"company = %(company)s\")\n        values[\"company\"] = filters[\"company\"]\n    if filters.get(\"from_date\"):\n        conditions.append(\"start_date >= %(from_date)s\")\n        values[\"from_date\"] = filters[\"from_date\"]\n    if filters.get(\"to_date\"):\n        conditions.append(\"end_date <= %(to_date)s\")\n        values[\"to_date\"] = filters[\"to_date\"]\n\n    slips = frappe.db.sql(\"\"\"\n        SELECT name, employee_name as emp_name, employee as emp_id, gross_pay, net_pay\n        FROM `tabSalary Slip`\n        WHERE {where}\n    \"\"\".format(where=\" AND \".join(conditions)), values, as_dict=1)\n\n    if not slips:\n        return columns, []\n\n    emp_ids = list({s.emp_id for s in slips})\n    emp_tins = {}\n    for emp_name, tax_id in frappe.db.get_values(\"Employee\", emp_ids, [\"name\", \"tax_id\"]):\n        emp_tins[emp_name] = tax_id or \"\"\n\n    slip_names = [s.name for s in slips]\n    all_components = frappe.db.sql(\"\"\"\n        SELECT parent, salary_component, amount, type\n        FROM `tabSalary Detail`\n        WHERE parent IN %(slip_names)s\n    \"\"\", {\"slip_names\": slip_names}, as_dict=1)\n\n    components_by_parent = defaultdict(list)\n    for c in all_components:\n        components_by_parent[c.parent].append(c)\n\n    data = []\n    for slip in slips:\n        components = components_by_parent.get(slip.name, [])\n        emp_tin = emp_tins.get(slip.emp_id, \"\")\n        basic = transport = overtime = other = tax = cost_share = 0\n        for c in components:\n            if c.salary_component in (\"Basic Salary\", \"Basic\"):\n                basic += c.amount\n            elif \"Transport\" in c.salary_component:\n                transport += c.amount\n            elif \"Overtime\" in c.salary_component:\n                overtime += c.amount\n            elif c.salary_component in (\"Income Tax\", \"PAYE\"):\n                tax += c.amount\n            elif \"Cost Sharing\" in c.salary_component:\n                cost_share += c.amount\n            elif c.type == \"Earning\" and c.amount > 0:\n                other += c.amount\n        other = max(0, other - basic - transport - overtime)\n        data.append({\n            \"emp_tin\": emp_tin, \"emp_name\": slip.emp_name,\n            \"basic_salary\": basic, \"transport_taxable\": transport,\n            \"overtime\": overtime, \"other_taxable\": other,\n            \"total_taxable\": slip.gross_pay, \"tax_withheld\": tax,\n            \"cost_sharing\": cost_share, \"net_pay\": slip.net_pay\n        })\n    return columns, data\n",
   "report_type": "Script Report",
   "roles": [
    {
@@ -32,19 +32,7 @@
     "parent": "Ethiopia Schedule A",
     "parentfield": "roles",
     "parenttype": "Report",
-    "role": "Employee"
-   },
-   {
-    "parent": "Ethiopia Schedule A",
-    "parentfield": "roles",
-    "parenttype": "Report",
     "role": "HR Manager"
-   },
-   {
-    "parent": "Ethiopia Schedule A",
-    "parentfield": "roles",
-    "parenttype": "Report",
-    "role": "Employee Self Service"
    },
    {
     "parent": "Ethiopia Schedule A",
@@ -71,62 +59,18 @@
   "filters": [],
   "is_standard": "No",
   "javascript": null,
-  "json": "[]",
+  "json": "[{\"fieldname\": \"company\", \"label\": \"Company\", \"fieldtype\": \"Link\", \"options\": \"Company\", \"reqd\": 1}, {\"fieldname\": \"from_date\", \"label\": \"From Date\", \"fieldtype\": \"Date\", \"reqd\": 1}, {\"fieldname\": \"to_date\", \"label\": \"To Date\", \"fieldtype\": \"Date\", \"reqd\": 1}]",
   "letter_head": null,
-  "modified": "2026-02-02 12:32:42.345017",
-  "module": "Ethiopia Compliance",
-  "name": "Direct SQL Check",
-  "prepared_report": 0,
-  "query": "\nSELECT\n    name as \"Invoice ID\",\n    posting_date as \"Date\",\n    company as \"Company Name\",\n    grand_total as \"Amount\",\n    status as \"Status\"\nFROM\n    `tabSales Invoice`\nORDER BY\n    posting_date DESC\nLIMIT 50\n    ",
-  "ref_doctype": "Sales Invoice",
-  "reference_report": null,
-  "report_name": "Direct SQL Check",
-  "report_script": null,
-  "report_type": "Query Report",
-  "roles": [
-   {
-    "parent": "Direct SQL Check",
-    "parentfield": "roles",
-    "parenttype": "Report",
-    "role": "Accounts User"
-   },
-   {
-    "parent": "Direct SQL Check",
-    "parentfield": "roles",
-    "parenttype": "Report",
-    "role": "Accounts Manager"
-   },
-   {
-    "parent": "Direct SQL Check",
-    "parentfield": "roles",
-    "parenttype": "Report",
-    "role": "Employee Self Service"
-   }
-  ],
-  "timeout": 0
- },
- {
-  "add_total_row": 0,
-  "add_translate_data": 0,
-  "columns": [],
-  "disabled": 0,
-  "docstatus": 0,
-  "doctype": "Report",
-  "filters": [],
-  "is_standard": "No",
-  "javascript": null,
-  "json": "[]",
-  "letter_head": null,
-  "modified": "2026-02-02 12:37:00.091110",
+  "modified": "2026-04-30 00:00:00.000000",
   "module": "Ethiopia Compliance",
   "name": "TASS Sales Declaration",
   "prepared_report": 0,
-  "query": "\n    SELECT\n        c.tax_id as \"Seller TIN\",\n        cust.tax_id as \"Buyer TIN\",\n        s.customer_name as \"Buyer Name\",\n        s.custom_fiscal_machine_no as \"MRC\",\n        s.custom_fs_number as \"FS No\",\n        s.posting_date as \"Date\",\n        s.grand_total as \"Amount\",\n        CASE WHEN s.docstatus = 0 THEN 'Draft' ELSE 'Submitted' END as \"Status\"\n    FROM\n        `tabSales Invoice` s\n        JOIN `tabCompany` c ON s.company = c.name\n        LEFT JOIN `tabCustomer` cust ON s.customer = cust.name\n    WHERE\n        s.docstatus < 2\n        AND s.company = 'BESPO'  -- <--- HARDCODED\n        AND s.posting_date >= '2025-01-01' -- <--- HARDCODED\n    ORDER BY s.posting_date DESC\n    ",
+  "query": null,
   "ref_doctype": "Sales Invoice",
   "reference_report": null,
   "report_name": "TASS Sales Declaration",
-  "report_script": null,
-  "report_type": "Query Report",
+  "report_script": "\ndef execute(filters=None):\n    import frappe\n\n    columns = [\n        {\"fieldname\": \"seller_tin\", \"label\": \"Seller TIN\", \"fieldtype\": \"Data\", \"width\": 140},\n        {\"fieldname\": \"buyer_tin\", \"label\": \"Buyer TIN\", \"fieldtype\": \"Data\", \"width\": 140},\n        {\"fieldname\": \"buyer_name\", \"label\": \"Buyer Name\", \"fieldtype\": \"Data\", \"width\": 180},\n        {\"fieldname\": \"mrc\", \"label\": \"MRC\", \"fieldtype\": \"Data\", \"width\": 140},\n        {\"fieldname\": \"fs_no\", \"label\": \"FS No\", \"fieldtype\": \"Data\", \"width\": 120},\n        {\"fieldname\": \"date\", \"label\": \"Date\", \"fieldtype\": \"Date\", \"width\": 100},\n        {\"fieldname\": \"amount\", \"label\": \"Amount\", \"fieldtype\": \"Currency\", \"width\": 120}\n    ]\n\n    conditions = [\"s.docstatus = 1\"]\n    values = {}\n    if filters.get(\"company\"):\n        conditions.append(\"s.company = %(company)s\")\n        values[\"company\"] = filters[\"company\"]\n    if filters.get(\"from_date\"):\n        conditions.append(\"s.posting_date >= %(from_date)s\")\n        values[\"from_date\"] = filters[\"from_date\"]\n    if filters.get(\"to_date\"):\n        conditions.append(\"s.posting_date <= %(to_date)s\")\n        values[\"to_date\"] = filters[\"to_date\"]\n\n    data = frappe.db.sql(\"\"\"\n        SELECT c.tax_id as seller_tin, cust.tax_id as buyer_tin,\n               s.customer_name as buyer_name, s.custom_fiscal_machine_no as mrc,\n               s.custom_fs_number as fs_no, s.posting_date as date, s.grand_total as amount\n        FROM `tabSales Invoice` s\n        JOIN `tabCompany` c ON s.company = c.name\n        LEFT JOIN `tabCustomer` cust ON s.customer = cust.name\n        WHERE {where}\n    \"\"\".format(where=\" AND \".join(conditions)), values, as_dict=1)\n    return columns, data\n",
+  "report_type": "Script Report",
   "roles": [
    {
     "parent": "TASS Sales Declaration",
@@ -139,12 +83,6 @@
     "parentfield": "roles",
     "parenttype": "Report",
     "role": "Accounts Manager"
-   },
-   {
-    "parent": "TASS Sales Declaration",
-    "parentfield": "roles",
-    "parenttype": "Report",
-    "role": "Employee Self Service"
    }
   ],
   "timeout": 0
@@ -159,18 +97,18 @@
   "filters": [],
   "is_standard": "No",
   "javascript": null,
-  "json": "[]",
+  "json": "[{\"fieldname\": \"company\", \"label\": \"Company\", \"fieldtype\": \"Link\", \"options\": \"Company\", \"reqd\": 1}, {\"fieldname\": \"from_date\", \"label\": \"From Date\", \"fieldtype\": \"Date\", \"reqd\": 1}, {\"fieldname\": \"to_date\", \"label\": \"To Date\", \"fieldtype\": \"Date\", \"reqd\": 1}]",
   "letter_head": null,
-  "modified": "2026-02-02 12:37:00.120798",
+  "modified": "2026-04-30 00:00:00.000000",
   "module": "Ethiopia Compliance",
   "name": "TASS Purchase Declaration",
   "prepared_report": 0,
-  "query": "\n    SELECT\n        c.tax_id as \"Purchaser TIN\",\n        p.custom_supplier_tin as \"Seller TIN\",\n        p.bill_no as \"Receipt No\",\n        p.bill_date as \"Date\",\n        p.grand_total as \"Amount\",\n        'Goods' as \"Type\"\n    FROM\n        `tabPurchase Invoice` p\n        JOIN `tabCompany` c ON p.company = c.name\n    WHERE\n        p.docstatus = 1\n        AND p.company = 'BESPO' -- <--- HARDCODED\n        AND p.posting_date >= '2025-01-01'\n    ",
+  "query": null,
   "ref_doctype": "Purchase Invoice",
   "reference_report": null,
   "report_name": "TASS Purchase Declaration",
-  "report_script": null,
-  "report_type": "Query Report",
+  "report_script": "\ndef execute(filters=None):\n    import frappe\n\n    columns = [\n        {\"fieldname\": \"purchaser_tin\", \"label\": \"Purchaser TIN\", \"fieldtype\": \"Data\", \"width\": 140},\n        {\"fieldname\": \"seller_tin\", \"label\": \"Seller TIN\", \"fieldtype\": \"Data\", \"width\": 140},\n        {\"fieldname\": \"receipt_no\", \"label\": \"Receipt No\", \"fieldtype\": \"Data\", \"width\": 120},\n        {\"fieldname\": \"receipt_date\", \"label\": \"Receipt Date\", \"fieldtype\": \"Date\", \"width\": 100},\n        {\"fieldname\": \"amount\", \"label\": \"Amount\", \"fieldtype\": \"Currency\", \"width\": 120},\n        {\"fieldname\": \"purchase_type\", \"label\": \"Type\", \"fieldtype\": \"Data\", \"width\": 150}\n    ]\n\n    conditions = [\"p.docstatus = 1\"]\n    values = {}\n    if filters.get(\"company\"):\n        conditions.append(\"p.company = %(company)s\")\n        values[\"company\"] = filters[\"company\"]\n    if filters.get(\"from_date\"):\n        conditions.append(\"p.posting_date >= %(from_date)s\")\n        values[\"from_date\"] = filters[\"from_date\"]\n    if filters.get(\"to_date\"):\n        conditions.append(\"p.posting_date <= %(to_date)s\")\n        values[\"to_date\"] = filters[\"to_date\"]\n\n    data = frappe.db.sql(\"\"\"\n        SELECT c.tax_id as purchaser_tin, p.custom_supplier_tin as seller_tin,\n               p.bill_no as receipt_no, p.bill_date as receipt_date,\n               p.grand_total as amount,\n               CASE WHEN EXISTS(SELECT 1 FROM `tabPurchase Invoice Item` pii\n                       LEFT JOIN `tabItem` i ON pii.item_code = i.name\n                       WHERE pii.parent = p.name AND i.is_stock_item = 0)\n                    THEN 'Services' ELSE 'Goods' END as purchase_type\n        FROM `tabPurchase Invoice` p\n        JOIN `tabCompany` c ON p.company = c.name\n        WHERE {where}\n    \"\"\".format(where=\" AND \".join(conditions)), values, as_dict=1)\n    return columns, data\n",
+  "report_type": "Script Report",
   "roles": [
    {
     "parent": "TASS Purchase Declaration",
@@ -189,12 +127,6 @@
     "parentfield": "roles",
     "parenttype": "Report",
     "role": "Accounts Manager"
-   },
-   {
-    "parent": "TASS Purchase Declaration",
-    "parentfield": "roles",
-    "parenttype": "Report",
-    "role": "Auditor"
    }
   ],
   "timeout": 0
@@ -209,18 +141,18 @@
   "filters": [],
   "is_standard": "No",
   "javascript": null,
-  "json": "[]",
+  "json": "[{\"fieldname\": \"company\", \"label\": \"Company\", \"fieldtype\": \"Link\", \"options\": \"Company\", \"reqd\": 1}, {\"fieldname\": \"from_date\", \"label\": \"From Date\", \"fieldtype\": \"Date\", \"reqd\": 1}, {\"fieldname\": \"to_date\", \"label\": \"To Date\", \"fieldtype\": \"Date\", \"reqd\": 1}]",
   "letter_head": null,
-  "modified": "2026-02-02 12:37:00.144507",
+  "modified": "2026-04-30 00:00:00.000000",
   "module": "Ethiopia Compliance",
   "name": "SIGTAS Withholding Report",
   "prepared_report": 0,
-  "query": "\n    SELECT\n        p.custom_supplier_tin as \"Supplier TIN\",\n        p.supplier_name as \"Supplier Name\",\n        p.bill_no as \"Invoice No\",\n        p.bill_date as \"Date\",\n        p.total as \"Taxable Amount\",\n        ABS(t.tax_amount) as \"Tax Withheld\"\n    FROM\n        `tabPurchase Taxes and Charges` t\n        JOIN `tabPurchase Invoice` p ON t.parent = p.name\n    WHERE\n        p.docstatus = 1\n        AND t.account_head LIKE '%Withholding%'\n        AND p.company = 'BESPO' -- <--- HARDCODED\n        AND p.posting_date >= '2025-01-01'\n    ",
+  "query": null,
   "ref_doctype": "Purchase Invoice",
   "reference_report": null,
   "report_name": "SIGTAS Withholding Report",
-  "report_script": null,
-  "report_type": "Query Report",
+  "report_script": "\ndef execute(filters=None):\n    import frappe\n\n    columns = [\n        {\"fieldname\": \"tin\", \"label\": \"Supplier TIN\", \"fieldtype\": \"Data\", \"width\": 140},\n        {\"fieldname\": \"name\", \"label\": \"Supplier Name\", \"fieldtype\": \"Data\", \"width\": 180},\n        {\"fieldname\": \"inv_no\", \"label\": \"Invoice No\", \"fieldtype\": \"Data\", \"width\": 120},\n        {\"fieldname\": \"date\", \"label\": \"Date\", \"fieldtype\": \"Date\", \"width\": 100},\n        {\"fieldname\": \"taxable\", \"label\": \"Taxable Amount\", \"fieldtype\": \"Currency\", \"width\": 120},\n        {\"fieldname\": \"wht_amount\", \"label\": \"Tax Withheld\", \"fieldtype\": \"Currency\", \"width\": 120}\n    ]\n\n    conditions = [\"p.docstatus = 1\"]\n    values = {}\n    if filters.get(\"company\"):\n        conditions.append(\"p.company = %(company)s\")\n        values[\"company\"] = filters[\"company\"]\n    if filters.get(\"from_date\"):\n        conditions.append(\"p.posting_date >= %(from_date)s\")\n        values[\"from_date\"] = filters[\"from_date\"]\n    if filters.get(\"to_date\"):\n        conditions.append(\"p.posting_date <= %(to_date)s\")\n        values[\"to_date\"] = filters[\"to_date\"]\n\n    data = frappe.db.sql(\"\"\"\n        SELECT p.custom_supplier_tin as tin, p.supplier_name as name,\n               p.bill_no as inv_no, p.bill_date as date, p.total as taxable,\n               ABS(t.tax_amount) as wht_amount\n        FROM `tabPurchase Taxes and Charges` t\n        JOIN `tabPurchase Invoice` p ON t.parent = p.name\n        WHERE t.account_head LIKE '%%Withholding%%'\n            AND {where}\n    \"\"\".format(where=\" AND \".join(conditions)), values, as_dict=1)\n    return columns, data\n",
+  "report_type": "Script Report",
   "roles": [
    {
     "parent": "SIGTAS Withholding Report",
@@ -239,12 +171,6 @@
     "parentfield": "roles",
     "parenttype": "Report",
     "role": "Accounts Manager"
-   },
-   {
-    "parent": "SIGTAS Withholding Report",
-    "parentfield": "roles",
-    "parenttype": "Report",
-    "role": "Auditor"
    }
   ],
   "timeout": 0
@@ -259,18 +185,18 @@
   "filters": [],
   "is_standard": "No",
   "javascript": null,
-  "json": "[]",
+  "json": "[{\"fieldname\": \"company\", \"label\": \"Company\", \"fieldtype\": \"Link\", \"options\": \"Company\", \"reqd\": 1}, {\"fieldname\": \"from_date\", \"label\": \"From Date\", \"fieldtype\": \"Date\", \"reqd\": 1}, {\"fieldname\": \"to_date\", \"label\": \"To Date\", \"fieldtype\": \"Date\", \"reqd\": 1}]",
   "letter_head": null,
-  "modified": "2026-02-02 13:00:21.917003",
+  "modified": "2026-04-30 00:00:00.000000",
   "module": "Ethiopia Compliance",
   "name": "TASS Purchase Excel Export",
   "prepared_report": 0,
-  "query": "\n    SELECT\n        p.custom_supplier_tin as \"Supplier TIN\",\n        p.supplier_name as \"Supplier Name\",\n        p.bill_no as \"Invoice Number\",\n        DATE_FORMAT(p.bill_date, '%%d/%%m/%%Y') as \"Invoice Date\", -- DD/MM/YYYY Format\n        p.grand_total as \"Total Amount\",\n        CASE \n            WHEN EXISTS(SELECT 1 FROM `tabPurchase Invoice Item` pii \n                        LEFT JOIN `tabItem` i ON pii.item_code = i.name \n                        WHERE pii.parent = p.name AND i.is_stock_item = 0) \n            THEN 'Services' \n            ELSE 'Goods' \n        END as \"Purchase Type\"\n    FROM\n        `tabPurchase Invoice` p\n    WHERE\n        p.docstatus = 1\n        AND p.company = 'BESPO' -- Ensures only your company data\n    ORDER BY\n        p.bill_date DESC\n    ",
+  "query": null,
   "ref_doctype": "Purchase Invoice",
   "reference_report": null,
   "report_name": "TASS Purchase Excel Export",
-  "report_script": null,
-  "report_type": "Query Report",
+  "report_script": "\ndef execute(filters=None):\n    import frappe\n\n    columns = [\n        {\"fieldname\": \"tin\", \"label\": \"Supplier TIN\", \"fieldtype\": \"Data\", \"width\": 140},\n        {\"fieldname\": \"name\", \"label\": \"Supplier Name\", \"fieldtype\": \"Data\", \"width\": 180},\n        {\"fieldname\": \"inv_no\", \"label\": \"Invoice Number\", \"fieldtype\": \"Data\", \"width\": 120},\n        {\"fieldname\": \"date\", \"label\": \"Invoice Date\", \"fieldtype\": \"Data\", \"width\": 100},\n        {\"fieldname\": \"total\", \"label\": \"Total Amount\", \"fieldtype\": \"Currency\", \"width\": 120},\n        {\"fieldname\": \"p_type\", \"label\": \"Purchase Type\", \"fieldtype\": \"Data\", \"width\": 120}\n    ]\n\n    conditions = [\"p.docstatus = 1\"]\n    values = {}\n    if filters.get(\"company\"):\n        conditions.append(\"p.company = %(company)s\")\n        values[\"company\"] = filters[\"company\"]\n    if filters.get(\"from_date\"):\n        conditions.append(\"p.bill_date >= %(from_date)s\")\n        values[\"from_date\"] = filters[\"from_date\"]\n    if filters.get(\"to_date\"):\n        conditions.append(\"p.bill_date <= %(to_date)s\")\n        values[\"to_date\"] = filters[\"to_date\"]\n\n    data = frappe.db.sql(\"\"\"\n        SELECT p.custom_supplier_tin as tin, p.supplier_name as name,\n               p.bill_no as inv_no, p.bill_date as date, p.grand_total as total,\n               CASE WHEN EXISTS(SELECT 1 FROM `tabPurchase Invoice Item` pii\n                       LEFT JOIN `tabItem` i ON pii.item_code = i.name\n                       WHERE pii.parent = p.name AND i.is_stock_item = 0)\n                    THEN 'Services' ELSE 'Goods' END as p_type\n        FROM `tabPurchase Invoice` p\n        WHERE {where}\n        ORDER BY p.bill_date DESC\n    \"\"\".format(where=\" AND \".join(conditions)), values, as_dict=1)\n    return columns, data\n",
+  "report_type": "Script Report",
   "roles": [
    {
     "parent": "TASS Purchase Excel Export",
@@ -289,12 +215,6 @@
     "parentfield": "roles",
     "parenttype": "Report",
     "role": "Accounts Manager"
-   },
-   {
-    "parent": "TASS Purchase Excel Export",
-    "parentfield": "roles",
-    "parenttype": "Report",
-    "role": "Auditor"
    }
   ],
   "timeout": 0

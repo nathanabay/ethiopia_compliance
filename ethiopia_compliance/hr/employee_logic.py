@@ -1,11 +1,19 @@
 import frappe
 from frappe import _
+from ethiopia_compliance.utils.tin_validator import validate_tin
+
 
 def validate_employee(doc, method):
-    if doc.tax_id:
-        clean_tin = doc.tax_id.replace("-", "").replace(" ", "").strip()
-        if not clean_tin.isdigit() or len(clean_tin) != 10:
-            frappe.throw(_("Ethiopian TIN must be exactly 10 digits."))
-        doc.tax_id = clean_tin
-        if not doc.custom_pension_number:
-            doc.custom_pension_number = clean_tin
+	"""Validate employee TIN and auto-clean format.
+
+	Hooked to Employee validate via hooks.py.
+	"""
+	if doc.tax_id:
+		# Clean the TIN value
+		clean_tin = doc.tax_id.replace("-", "").replace(" ", "").strip()
+		doc.tax_id = clean_tin
+
+		# Validate using shared TIN validator
+		result = validate_tin(clean_tin)
+		if not result['valid']:
+			frappe.throw(_(result['message']))

@@ -44,7 +44,7 @@ def setup_compliance_settings():
             save_needed = True
         
         # Initialize Ethiopian calendar setting (default to enabled for backward compatibility)
-        if not hasattr(settings, 'enable_ethiopian_calendar') or settings.enable_ethiopian_calendar is None:
+        if not settings.get("enable_ethiopian_calendar"):
             settings.enable_ethiopian_calendar = 1
             save_needed = True
             
@@ -157,7 +157,7 @@ def create_income_tax_slabs():
                 {"from_amount": 4001, "to_amount": 7000, "percent_deduction": 20},
                 {"from_amount": 7001, "to_amount": 10000, "percent_deduction": 25},
                 {"from_amount": 10001, "to_amount": 14000, "percent_deduction": 30},
-                {"from_amount": 14001, "to_amount": 9999999, "percent_deduction": 35}
+                {"from_amount": 14001, "to_amount": 0, "percent_deduction": 35}
             ]
         })
         doc.insert(ignore_permissions=True)

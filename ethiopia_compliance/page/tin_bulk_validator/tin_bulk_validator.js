@@ -27,15 +27,15 @@ class TINBulkValidator {
                 <div class="row">
                     <div class="col-md-12">
                         <div class="form-group">
-                            <label>Enter TINs (one per line or comma-separated)</label>
-                            <textarea class="form-control" id="tin-input" rows="10" 
+                            <label>${__('Enter TINs (one per line or comma-separated)')}</label>
+                            <textarea class="form-control" id="tin-input" rows="10"
                                 placeholder="0012345678&#10;0023456789&#10;0034567890"></textarea>
                         </div>
                         <button class="btn btn-primary" id="validate-btn">
-                            <i class="fa fa-check"></i> Validate TINs
+                            ${__('Validate TINs')}
                         </button>
                         <button class="btn btn-secondary" id="clear-btn">
-                            <i class="fa fa-times"></i> Clear
+                            ${__('Clear')}
                         </button>
                     </div>
                 </div>
@@ -63,31 +63,34 @@ class TINBulkValidator {
     validate_tins() {
         let input = this.parent.find('#tin-input').val();
         if (!input) {
-            frappe.msgprint('Please enter TINs to validate');
+            frappe.msgprint(__('Please enter TINs to validate'));
             return;
         }
 
-        // Parse TINs from input (handle newlines and commas)
-        let tins = input.split(/[\\n,]+/).map(t => t.trim()).filter(t => t.length > 0);
+        let tins = input.split(/[\n,]+/).map(t => t.trim()).filter(t => t.length > 0);
 
         if (tins.length === 0) {
-            frappe.msgprint('No valid TINs found');
+            frappe.msgprint(__('No valid TINs found'));
             return;
         }
 
-        frappe.show_alert({
-            message: `Validating ${tins.length} TINs...`,
-            indicator: 'blue'
-        });
+        // Disable button to prevent double-click
+        let $btn = this.parent.find('#validate-btn');
+        $btn.prop('disabled', true);
 
         frappe.call({
             method: 'ethiopia_compliance.utils.tin_validator.bulk_validate_tins',
             args: { tin_list: tins },
             callback: (r) => {
+                $btn.prop('disabled', false);
                 if (r.message) {
                     this.results = r.message;
                     this.show_results();
                 }
+            },
+            error: () => {
+                $btn.prop('disabled', false);
+                frappe.show_alert({message: __('Validation failed'), indicator: 'red'});
             }
         });
     }
@@ -100,21 +103,21 @@ class TINBulkValidator {
 
         let html = `
             <div class="results-summary">
-                <h4>Validation Results</h4>
+                <h4>${__('Validation Results')}</h4>
                 <p>
-                    <span class="badge badge-success">${valid_count} Valid</span>
-                    <span class="badge badge-danger">${invalid_count} Invalid</span>
-                    <span class="badge badge-info">${this.results.length} Total</span>
+                    <span class="badge badge-success">${valid_count} ${__('Valid')}</span>
+                    <span class="badge badge-danger">${invalid_count} ${__('Invalid')}</span>
+                    <span class="badge badge-info">${this.results.length} ${__('Total')}</span>
                 </p>
             </div>
             <table class="table table-bordered">
                 <thead>
                     <tr>
                         <th width="5%">#</th>
-                        <th width="20%">TIN</th>
-                        <th width="10%">Status</th>
-                        <th width="15%">Type</th>
-                        <th width="50%">Message</th>
+                        <th width="20%">${__('TIN')}</th>
+                        <th width="10%">${__('Status')}</th>
+                        <th width="15%">${__('Type')}</th>
+                        <th width="50%">${__('Message')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -122,15 +125,18 @@ class TINBulkValidator {
 
         this.results.forEach((result, idx) => {
             let status_class = result.valid ? 'success' : 'danger';
-            let status_icon = result.valid ? '✓' : '✗';
+            let status_icon = result.valid ? '&#10003;' : '&#10007;';
+            let tin = frappe.utils.escape_html(result.tin || '');
+            let type = frappe.utils.escape_html(result.type || '');
+            let message = frappe.utils.escape_html(result.message || '');
 
             html += `
                 <tr class="table-${status_class}">
                     <td>${idx + 1}</td>
-                    <td><code>${result.tin}</code></td>
+                    <td><code>${tin}</code></td>
                     <td><span class="badge badge-${status_class}">${status_icon}</span></td>
-                    <td>${result.type}</td>
-                    <td>${result.message}</td>
+                    <td>${type}</td>
+                    <td>${message}</td>
                 </tr>
             `;
         });
@@ -140,37 +146,48 @@ class TINBulkValidator {
             </table>
             <div style="margin-top: 10px;">
                 <button class="btn btn-secondary" id="export-results">
-                    <i class="fa fa-download"></i> Export to CSV
+                    ${__('Export to CSV')}
                 </button>
             </div>
         `;
 
         this.parent.find('#results-container').html(html);
 
-        // Bind export button
         const me = this;
         this.parent.find('#export-results').on('click', function () {
             me.export_to_csv();
         });
     }
 
+    sanitize_csv_value(val) {
+        // Prevent CSV formula injection: prepend ' to values starting with =, +, -, @
+        let s = String(val || '').replace(/"/g, '""');
+        if (/^[=+\-@\t\r]/.test(s)) {
+            s = "'" + s;
+        }
+        return s;
+    }
+
     export_to_csv() {
-        let csv = 'TIN,Status,Type,Message\\n';
+        let csv = 'TIN,Status,Type,Message\n';
         this.results.forEach(r => {
             let status = r.valid ? 'Valid' : 'Invalid';
-            csv += `"${r.tin}","${status}","${r.type}","${r.message}"\\n`;
+            csv += '"' + this.sanitize_csv_value(r.tin) + '",'
+                 + '"' + this.sanitize_csv_value(status) + '",'
+                 + '"' + this.sanitize_csv_value(r.type) + '",'
+                 + '"' + this.sanitize_csv_value(r.message) + '"\n';
         });
 
-        // Download CSV
         let blob = new Blob([csv], { type: 'text/csv' });
         let url = URL.createObjectURL(blob);
         let a = document.createElement('a');
         a.href = url;
         a.download = 'tin_validation_results.csv';
         a.click();
+        URL.revokeObjectURL(url);
 
         frappe.show_alert({
-            message: 'Results exported to CSV',
+            message: __('Results exported to CSV'),
             indicator: 'green'
         });
     }

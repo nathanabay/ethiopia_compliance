@@ -16,28 +16,35 @@ ethiopia_compliance.tin_validator = {
             callback: function (r) {
                 if (r.message) {
                     callback(r.message);
+                } else {
+                    callback({ valid: false, message: __('Validation failed'), type: 'Unknown' });
                 }
+            },
+            error: function () {
+                callback({ valid: false, message: __('Server error'), type: 'Unknown' });
             }
         });
     },
 
     show_validation_message: function (frm, result, fieldname) {
         fieldname = fieldname || 'tax_id';
+        let msg_type = frappe.utils.escape_html(result.type || '');
+        let msg_text = frappe.utils.escape_html(result.message || '');
 
         if (result.valid) {
             frappe.show_alert({
-                message: __(`✓ ${result.message} (${result.type})`),
+                message: __('Valid {0} TIN', [msg_type]),
                 indicator: 'green'
             });
             frm.set_df_property(fieldname, 'description',
-                `<span style="color: green;">✓ Valid ${result.type} TIN</span>`);
+                '<span style="color: green;">&#10003; Valid ' + msg_type + ' TIN</span>');
         } else {
             frappe.show_alert({
-                message: __(`✗ ${result.message}`),
+                message: __(msg_text),
                 indicator: 'red'
             });
             frm.set_df_property(fieldname, 'description',
-                `<span style="color: red;">✗ ${result.message}</span>`);
+                '<span style="color: red;">&#10007; ' + msg_text + '</span>');
         }
     },
 

@@ -1,9 +1,22 @@
 frappe.ui.form.on('Tax Report', {
     refresh: function (frm) {
-        if (!frm.doc.__islocal && frm.doc.status !== 'Submitted') {
+        if (!frm.doc.__islocal && frm.doc.status === 'Draft') {
             frm.add_custom_button(__('Generate Report'), function () {
                 generate_report(frm);
             }).addClass('btn-primary');
+        }
+
+        if (frm.doc.status === 'Generating') {
+            frm.dashboard.set_headline(__('Report is being generated...'), 'blue');
+            // Auto-refresh every 3 seconds
+            frm._poll_interval = setInterval(function () {
+                frappe.db.get_value('Tax Report', frm.doc.name, 'status', (r) => {
+                    if (r && r.status !== 'Generating') {
+                        clearInterval(frm._poll_interval);
+                        frm.reload_doc();
+                    }
+                });
+            }, 3000);
         }
 
         if (frm.doc.report_data && frm.doc.status === 'Generated') {
@@ -23,37 +36,32 @@ frappe.ui.form.on('Tax Report', {
     },
 
     period_type: function (frm) {
-        // Auto-set dates based on period type
         if (frm.doc.period_type === 'Monthly' && !frm.doc.from_date) {
             let today = frappe.datetime.get_today();
-            let month_start = frappe.datetime.month_start(today);
-            let month_end = frappe.datetime.month_end(today);
-
-            frm.set_value('from_date', month_start);
-            frm.set_value('to_date', month_end);
+            frm.set_value('from_date', frappe.datetime.month_start(today));
+            frm.set_value('to_date', frappe.datetime.month_end(today));
         }
     }
 });
 
 function generate_report(frm) {
-    frappe.show_alert({
-        message: __('Generating report...'),
-        indicator: 'blue'
-    });
-
     frappe.call({
         method: 'ethiopia_compliance.ethiopia_compliance.doctype.tax_report.tax_report.generate_report',
-        args: {
-            docname: frm.doc.name
-        },
+        args: { docname: frm.doc.name },
         callback: function (r) {
             if (r.message) {
-                frm.reload_doc();
                 frappe.show_alert({
-                    message: __('Report generated successfully'),
-                    indicator: 'green'
+                    message: __(r.message),
+                    indicator: 'blue'
                 });
+                frm.reload_doc();
             }
+        },
+        error: function () {
+            frappe.show_alert({
+                message: __('Report generation failed'),
+                indicator: 'red'
+            });
         }
     });
 }

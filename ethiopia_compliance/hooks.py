@@ -6,32 +6,48 @@ app_email = "admin@bespo.et"
 app_license = "MIT"
 
 # --- 1. CAPTURE THESE CHANGES (FIXTURES) ---
-# This tells ERPNext to save these DB changes into files
 fixtures = [
-    {"dt": "Custom Field", "filters": [["module", "=", "Ethiopia Compliance"]]},
-    {"dt": "Client Script", "filters": [["module", "=", "Ethiopia Compliance"]]},
-    {"dt": "Server Script", "filters": [["module", "=", "Ethiopia Compliance"]]},
-    {"dt": "Property Setter", "filters": [["module", "=", "Ethiopia Compliance"]]},
-    {"dt": "Workflow", "filters": [["module", "=", "Ethiopia Compliance"]]},
-    {"dt": "Workflow State", "filters": [["module", "=", "Ethiopia Compliance"]]},
-    {"dt": "Workspace", "filters": [["module", "=", "Ethiopia Compliance"]]},
-    # Capture the specific 2017 EC Calendar we made
-    {"dt": "Fiscal Year", "filters": [["name", "=", "2017 E.C."]]}
+	{"dt": "Custom Field", "filters": [["module", "=", "Ethiopia Compliance"]]},
+	{"dt": "Client Script", "filters": [["module", "=", "Ethiopia Compliance"]]},
+	{"dt": "Server Script", "filters": [["module", "=", "Ethiopia Compliance"]]},
+	{"dt": "Property Setter", "filters": [["module", "=", "Ethiopia Compliance"]]},
+	{"dt": "Workflow", "filters": [["module", "=", "Ethiopia Compliance"]]},
+	{"dt": "Workflow State", "filters": [["module", "=", "Ethiopia Compliance"]]},
+	{"dt": "Workspace", "filters": [["module", "=", "Ethiopia Compliance"]]},
+	{"dt": "Fiscal Year", "filters": [["name", "=", "2017 E.C."]]}
 ]
 
-# --- 2. AUTOMATICALLY APPLY WHT LOGIC ---
-# This connects the Python WHT logic to Purchase Invoices
+# --- 2. DOC EVENTS ---
 doc_events = {
-    "Purchase Invoice": {
-        "before_save": "ethiopia_compliance.accounts.wht_logic.apply_withholding_tax"
-    }
+	"Purchase Invoice": {
+		"before_save": [
+			"ethiopia_compliance.accounts.wht_logic.apply_withholding_tax"
+		]
+	},
+	"Sales Invoice": {
+		"before_submit": [
+			"ethiopia_compliance.accounts.invoice_logic.validate_fs_number"
+		]
+	},
+	"Employee": {
+		"validate": [
+			"ethiopia_compliance.hr.employee_logic.validate_employee"
+		]
+	}
 }
 
-# --- 3. GLOBAL ASSETS ---
+# --- 3. SCHEDULED EVENTS ---
+scheduler_events = {
+	"daily": [
+		"ethiopia_compliance.overrides.leave_allocation.run_daily_leave_update",
+	]
+}
+
+# --- 4. GLOBAL ASSETS ---
 app_include_js = [
-    "/assets/ethiopia_compliance/js/ethiopian_calendar.js",
-    "/assets/ethiopia_compliance/js/tin_validation.js"
+	"/assets/ethiopia_compliance/js/ethiopian_calendar.js",
+	"/assets/ethiopia_compliance/js/tin_validation.js"
 ]
 
-# --- 4. REQUIRED APPS ---
+# --- 5. REQUIRED APPS ---
 required_apps = ["erpnext"]

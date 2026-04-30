@@ -1,50 +1,57 @@
 import frappe
+from frappe import _
 
 def apply_withholding_tax(doc, method):
-    """
-    Applies Withholding Tax (WHT) based on Compliance Settings.
-    """
-    # 1. Check if Supplier is WHT Eligible
-    supplier_wht = frappe.db.get_value("Supplier", doc.supplier, "custom_wht_eligible")
-    if not supplier_wht:
-        return
+	"""
+	Applies Withholding Tax (WHT) based on Compliance Settings.
+	Hooked to Purchase Invoice before_save.
+	"""
+	# 1. Check if Supplier is WHT Eligible
+	supplier_wht = frappe.db.get_value("Supplier", doc.supplier, "custom_wht_eligible")
+	if not supplier_wht:
+		return
 
-    # 2. Fetch Compliance Settings
-    settings = frappe.get_single("Compliance Setting")
-    
-    # Defaults
-    goods_threshold = settings.wht_goods_threshold or 10000
-    services_threshold = settings.wht_services_threshold or 3000
-    wht_rate = (settings.wht_rate or 2) / 100
+	# 2. Fetch Compliance Settings (cached)
+	settings = frappe.get_cached_doc("Compliance Setting")
 
-    # 3. Determine Threshold based on Item Types
-    current_threshold = goods_threshold # Default to Goods
-    
-    for item in doc.items:
-        is_stock = frappe.db.get_value("Item", item.item_code, "is_stock_item")
-        if not is_stock:
-            current_threshold = services_threshold # Strict service threshold
-            break 
+	goods_threshold = settings.wht_goods_threshold or 10000
+	services_threshold = settings.wht_services_threshold or 3000
+	wht_rate = (settings.wht_rate or 2) / 100
 
-    # 4. Apply Tax if Grand Total exceeds threshold
-    if doc.grand_total >= current_threshold:
-        # Find Account dynamically
-        wht_account = settings.wht_account or frappe.db.get_value("Account", {"account_name": ["like", "%Withholding%"], "company": doc.company})
-        
-        if not wht_account:
-            return
+	# 3. Determine Threshold - batch fetch item types in one query
+	current_threshold = goods_threshold
+	item_codes = list({item.item_code for item in doc.items if item.item_code})
+	if item_codes:
+		is_stock_map = dict(frappe.db.get_values("Item", item_codes, ["name", "is_stock_item"]))
+		for item in doc.items:
+			if not is_stock_map.get(item.item_code, True):
+				current_threshold = services_threshold
+				break
 
-        # Check for duplicates
-        wht_exists = any(t.account_head == wht_account for t in doc.taxes)
-        
-        if not wht_exists:
-            doc.append("taxes", {
-                "charge_type": "Actual",
-                "account_head": wht_account,
-                "description": f"{settings.wht_rate or 2}% WHT (Threshold: {current_threshold:,.0f} ETB)",
-                "tax_amount": -(doc.total * wht_rate), # Negative because we deduct it
-                "category": "Total",               
-                "add_deduct_tax": "Deduct"         
-            })
-            
-            doc.calculate_taxes_and_totals()
+	# 4. Apply Tax if Grand Total exceeds threshold
+	if doc.grand_total >= current_threshold:
+		wht_account = settings.wht_account
+		if not wht_account:
+			wht_account = frappe.db.get_value("Account", {
+				"account_name": ["like", "%Withholding%"],
+				"company": doc.company,
+				"is_group": 0
+			})
+
+		if not wht_account:
+			return
+
+		# Check for duplicates
+		wht_exists = any(t.account_head == wht_account for t in doc.taxes)
+
+		if not wht_exists:
+			doc.append("taxes", {
+				"charge_type": "Actual",
+				"account_head": wht_account,
+				"description": f"{settings.wht_rate or 2}% WHT (Threshold: {current_threshold:,.0f} ETB)",
+				"tax_amount": -(doc.total * wht_rate),
+				"category": "Total",
+				"add_deduct_tax": "Deduct"
+			})
+
+			doc.calculate_taxes_and_totals()
