@@ -3,6 +3,7 @@
 
 import frappe
 from frappe import _
+from ethiopia_compliance.utils import get_tin_status
 
 def execute(filters=None):
 	if filters is None:
@@ -11,6 +12,7 @@ def execute(filters=None):
 	columns = [
 		{"fieldname": "purchaser_tin", "label": _("Purchaser TIN"), "fieldtype": "Data", "width": 140},
 		{"fieldname": "seller_tin", "label": _("Seller TIN"), "fieldtype": "Data", "width": 140},
+		{"fieldname": "seller_tin_status", "label": _("Seller TIN Status"), "fieldtype": "Data", "width": 120},
 		{"fieldname": "receipt_no", "label": _("Receipt No"), "fieldtype": "Data", "width": 120},
 		{"fieldname": "receipt_date", "label": _("Receipt Date"), "fieldtype": "Date", "width": 100},
 		{"fieldname": "calendar_type", "label": _("Calendar (G/E)"), "fieldtype": "Data", "width": 100},
@@ -65,5 +67,8 @@ def execute(filters=None):
 		) svc ON p.name = svc.parent
 		WHERE {where}
 	""".format(where=" AND ".join(conditions)), values, as_dict=True)
+
+	for row in data:
+		row["seller_tin_status"] = get_tin_status(row.get("seller_tin"))
 
 	return columns, data

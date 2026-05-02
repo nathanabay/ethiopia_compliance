@@ -3,6 +3,7 @@
 
 import frappe
 from frappe import _
+from ethiopia_compliance.utils import get_tin_status
 
 def execute(filters=None):
 	if filters is None:
@@ -10,6 +11,7 @@ def execute(filters=None):
 
 	columns = [
 		{"fieldname": "tin", "label": _("Supplier TIN"), "fieldtype": "Data", "width": 140},
+		{"fieldname": "tin_status", "label": _("TIN Status"), "fieldtype": "Data", "width": 110},
 		{"fieldname": "name", "label": _("Supplier Name"), "fieldtype": "Data", "width": 180},
 		{"fieldname": "inv_no", "label": _("Invoice Number"), "fieldtype": "Data", "width": 120},
 		{"fieldname": "date", "label": _("Invoice Date"), "fieldtype": "Date", "width": 100},
@@ -63,5 +65,8 @@ def execute(filters=None):
 		WHERE {where}
 		ORDER BY p.posting_date DESC
 	""".format(where=" AND ".join(conditions)), values, as_dict=True)
+
+	for row in data:
+		row["tin_status"] = get_tin_status(row.get("tin"))
 
 	return columns, data

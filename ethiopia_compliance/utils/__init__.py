@@ -160,3 +160,29 @@ def compute_paye_tax(taxable_income):
 
 	# Top bracket: over 14,000 at 35%
 	return flt(2850 + (taxable - 14000) * 0.35, 2)
+
+
+# --- TIN VALIDATION HELPERS ---
+
+def get_tin_status(tin_number):
+	"""
+	Get a simple TIN status string for use in report columns.
+
+	Args:
+		tin_number (str): TIN to check
+
+	Returns:
+		str: "Valid", "Missing", or "Invalid Format"
+	"""
+	if not tin_number or str(tin_number).strip() == "":
+		return _("Missing")
+
+	tin_clean = str(tin_number).strip().replace(" ", "").replace("-", "")
+
+	if not tin_clean.isdigit():
+		return _("Invalid Format")
+
+	if len(tin_clean) != 10:
+		return _("Invalid Format")
+
+	return _("Valid")
