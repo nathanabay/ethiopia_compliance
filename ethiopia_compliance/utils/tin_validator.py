@@ -103,6 +103,7 @@ def validate_company_tin(tin_number):
 @frappe.whitelist(methods=["POST"], xss_safe=True)
 def validate_tin_api(tin_number: str) -> dict:
 	"""API endpoint for TIN validation (called from client-side JS)"""
+	frappe.only_for(["Accounts Manager", "Accounts User", "System Manager"])
 	tin_number = str(tin_number).strip()
 	return validate_tin(tin_number)
 
@@ -110,6 +111,7 @@ def validate_tin_api(tin_number: str) -> dict:
 @frappe.whitelist(methods=["POST"], xss_safe=True)
 def bulk_validate_tins(tin_list) -> list:
 	"""Validate multiple TINs at once (max 500)"""
+	frappe.only_for(["Accounts Manager", "Accounts User", "System Manager"])
 	import json
 
 	if isinstance(tin_list, str):

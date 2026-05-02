@@ -65,7 +65,9 @@ def generate_vat_xml(report_name, filters, data):
 	from frappe.utils import flt
 
 	company = filters.get("company", "")
-	company_tin = frappe.db.get_value("Company", company, "tax_id") or ""
+	# Use cached value to avoid a separate DB round-trip when _run_report
+	# already validated and resolved company from the report filters.
+	company_tin = frappe.get_cached_value("Company", company, "tax_id") or ""
 
 	root = Element("VATDeclaration")
 	root.set("type", "Sales" if "Sales" in report_name else "Purchase")
@@ -162,6 +164,8 @@ def download_vat_xml(report_name, filters=None):
 		report_name (str): "VAT Sales Register" or "VAT Purchase Register"
 		filters (dict|str): Report filter values (JSON string if called from JS)
 	"""
+	frappe.only_for(["Accounts Manager", "System Manager"])
+
 	if isinstance(filters, str):
 		import json
 		filters = json.loads(filters)
@@ -188,6 +192,8 @@ def download_darash_csv(report_name, filters=None):
 		report_name (str): Report name
 		filters (dict|str): Report filter values (JSON string if called from JS)
 	"""
+	frappe.only_for(["Accounts Manager", "System Manager"])
+
 	if isinstance(filters, str):
 		import json
 		filters = json.loads(filters)

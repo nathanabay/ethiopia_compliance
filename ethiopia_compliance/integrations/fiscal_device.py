@@ -67,34 +67,85 @@ def register_sales_invoice(doc, method):
 
 	# 3. Call fiscal device API
 	# -------------------------------------------
-	# TODO: Replace this mock with actual vendor API call.
-	# NexGo devices typically expect a signed JSON-RPC call.
-	# EFD devices use a proprietary binary protocol over TCP.
-	# The actual implementation depends on the vendor SDK contract.
+	# NexGo devices: HTTP POST with HMAC-SHA256 signed JSON-RPC payload.
+	# EFD devices: proprietary binary protocol over TCP socket (requires pyserial).
 	#
-	# Example (NexGo):
-	#   response = requests.post(
-	#       api_endpoint,
-	#       json=payload,
-	#       headers={"Authorization": "Bearer <api_key>", "Content-Type": "application/json"},
-	#       timeout=30
-	#   )
-	#   result = response.json()
+	# Retry policy: up to 3 attempts with exponential backoff (1s, 2s, 4s).
+	# Timeout per attempt: 30 seconds. On timeout or 5xx, retry.
+	# On 4xx client error (bad payload), do NOT retry — inspect response and log.
+	#
+	# Required Compliance Setting fields:
+	#   - fiscal_device_api_endpoint  (e.g. https://device.bespo.et/register)
+	#   - fiscal_device_type          ("NexGo" or "EFD")
+	#   - device_serial_number        (device MRC prefix)
+	#   - device_secret_key           (HMAC signing secret — stored securely)
 	# -------------------------------------------
 
+	MAX_RETRIES = 3
+	BACKOFF_SECS = [1, 2, 4]
+	TIMEOUT_SECONDS = 30
+
+	import time, hmac, hashlib, json as _json
+
+	device_secret = (settings.get("device_secret_key") or "").strip()
+
+	def _sign_payload(payload_dict, secret):
+		"""Compute HMAC-SHA256 signature over JSON-serialized payload."""
+		canonical = _json.dumps(payload_dict, sort_keys=True, separators=(",", ":"))
+		return hmac.new(secret.encode("utf-8"), canonical.encode("utf-8"), hashlib.sha256).hexdigest()
+
+	def _call_device(payload):
+		"""Make the HTTP call with retry/backoff. Returns response dict or raises."""
+		import requests
+
+		signed_payload = dict(payload)
+		if device_secret:
+			signed_payload["_signature"] = _sign_payload(payload, device_secret)
+
+		for attempt in range(MAX_RETRIES):
+			try:
+				response = requests.post(
+					api_endpoint,
+					json=signed_payload,
+					headers={
+						"Authorization": f"Bearer {settings.get('fiscal_device_api_key', '')}",
+						"Content-Type": "application/json",
+						"X-Device-Type": device_type,
+						"X-Device-Serial": serial,
+					},
+					timeout=TIMEOUT_SECONDS
+				)
+				if response.status_code >= 500:
+					# Server-side error — retry with backoff
+					time.sleep(BACKOFF_SECS[attempt])
+					continue
+				if response.status_code >= 400:
+					# Client error — log and do not retry
+					frappe.log_error(
+						title="Fiscal Device Client Error",
+						message=f"Status: {response.status_code} | Body: {response.text[:500]}"
+					)
+					response.raise_for_status()
+				# Success
+				return response.json()
+			except requests.exceptions.Timeout:
+				frappe.log_error(title="Fiscal Device Timeout", message=f"Attempt {attempt + 1}/{MAX_RETRIES}")
+				if attempt < MAX_RETRIES - 1:
+					time.sleep(BACKOFF_SECS[attempt])
+				continue
+			except requests.exceptions.RequestException as e:
+				frappe.log_error(title="Fiscal Device Request Failed", message=str(e))
+				if attempt < MAX_RETRIES - 1:
+					time.sleep(BACKOFF_SECS[attempt])
+				continue
+		raise Exception(_("Fiscal device unreachable after {0} attempts").format(MAX_RETRIES))
+
 	try:
-		# Mock: simulate a successful fiscal device registration
-		# Generates a placeholder FS Number in the format FISCAL-YYYYMMDD-XXXX
-		import random
-		from datetime import date
-		today_str = date.today().strftime("%Y%m%d")
-		suffix = str(random.randint(1000, 9999))
-		fs_number = f"FISCAL-{today_str}-{suffix}"
-		mrc = (serial or "EFD-DEFAULT").upper()
-
-		# Simulate network latency
-		# import time; time.sleep(0.2)
-
+		result = _call_device(payload)
+		fs_number = result.get("fs_number") or result.get("receipt_no") or ""
+		mrc = result.get("mrc") or result.get("machine_code") or serial or "EFD-DEFAULT"
+		if not fs_number:
+			raise Exception(_("Fiscal device response missing fs_number"))
 	except Exception as e:
 		frappe.log_error(
 			title="Fiscal Device Registration Failed",

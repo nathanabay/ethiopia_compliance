@@ -29,50 +29,57 @@ def check_overdue_pension():
 
 	Wire to: scheduler_events.daily in hooks.py
 	"""
-	_today = getdate(today())
+	try:
+		_today = getdate(today())
 
-	# Get company
-	company = frappe.defaults.get_user_default("Company")
-	if not company:
-		return
+		# Get company
+		company = frappe.defaults.get_user_default("Company")
+		if not company:
+			return
 
-	# Look back 4 months — we only care about overdue, not current month
-	cutoff = add_days(_today, -120)
-	from_date_str = cutoff.strftime("%Y-%m-%d")
-	today_str = _today.strftime("%Y-%m-%d")
+		# Look back 4 months — we only care about overdue, not current month
+		cutoff = add_days(_today, -120)
+		from_date_str = cutoff.strftime("%Y-%m-%d")
+		today_str = _today.strftime("%Y-%m-%d")
 
-	# 1. Aggregate pension liability from submitted salary slips by month
-	pension_by_month = _get_monthly_pension_liability(company, from_date_str, today_str)
-	if not pension_by_month:
-		return
+		# 1. Aggregate pension liability from submitted salary slips by month
+		pension_by_month = _get_monthly_pension_liability(company, from_date_str, today_str)
+		if not pension_by_month:
+			return
 
-	# 2. Get remittances by month (POESSA-related Payment Entries)
-	remittances_by_month = _get_monthly_pension_remittances(company, from_date_str)
+		# 2. Get remittances by month (POESSA-related Payment Entries)
+		remittances_by_month = _get_monthly_pension_remittances(company, from_date_str)
 
-	# 3. Compare and alert
-	for month_key, liability in pension_by_month.items():
-		month_end = getdate(liability["month_end"])
-		days_since_month_end = date_diff(_today, month_end)
+		# 3. Compare and alert
+		for month_key, liability in pension_by_month.items():
+			month_end = getdate(liability["month_end"])
+			days_since_month_end = date_diff(_today, month_end)
 
-		# Only alert if 30+ days have passed
-		if days_since_month_end < 30:
-			continue
+			# Only alert if 30+ days have passed
+			if days_since_month_end < 30:
+				continue
 
-		total_due = liability["emp_pension"] + liability["org_pension"]
-		total_remitted = flt(remittances_by_month.get(month_key, {}).get("amount", 0))
-		outstanding = flt(total_due - total_remitted, 2)
+			total_due = liability["emp_pension"] + liability["org_pension"]
+			total_remitted = flt(remittances_by_month.get(month_key, {}).get("amount", 0))
+			outstanding = flt(total_due - total_remitted, 2)
 
-		if outstanding <= 1.0:
-			continue  # Settled within 1 ETB tolerance
+			if outstanding <= 1.0:
+				continue  # Settled within 1 ETB tolerance
 
-		# Raise alert
-		_create_pension_overdue_notification(
-			company=company,
-			month_key=month_key,
-			month_end=month_end,
-			total_due=total_due,
-			outstanding=outstanding,
-			days_overdue=days_since_month_end
+			# Raise alert
+			_create_pension_overdue_notification(
+				company=company,
+				month_key=month_key,
+				month_end=month_end,
+				total_due=total_due,
+				outstanding=outstanding,
+				days_overdue=days_since_month_end
+			)
+	except Exception:
+		frappe.log_error(title="check_overdue_pension failed")
+		_critical_alert_email(
+			subject="CRITICAL: check_overdue_pension failed",
+			body=f"<pre>{frappe.get_traceback()}</pre>"
 		)
 
 
@@ -206,11 +213,37 @@ def _create_pension_overdue_notification(company, month_key, month_end, total_du
 
 
 # ──────────────────────────────────────────
-# Email helper
+# Email helpers
 # ──────────────────────────────────────────
 
+def _critical_alert_email(subject, body):
+	"""Send a critical alert email to the engineering team when a scheduler task fails.
+
+	Delivers to Andualem and Selamawit so the team is immediately aware of
+	background task failures that could indicate data or compliance risk.
+	"""
+	# Default recipients — replace with actual team emails
+	recipients = ["andu@bespo.et", "selam@bespo.et"]
+	try:
+		frappe.sendmail(
+			recipients=recipients,
+			subject=subject,
+			message=body,
+			priority="high"
+		)
+	except Exception:
+		frappe.log_error(title=f"Failed to send critical alert: {subject}")
+
+
 def notify_users_with_role(role, subject, message):
-	"""Send notification to all users with a given role."""
+	"""Send notification to all users with a given role.
+
+	Note: Notification Log inserts use ignore_permissions=True because this
+	function is called from scheduler (background) tasks where the system
+	acts as an actor rather than a specific user session. The notification
+	purpose is administrative alert delivery (not data access), so the
+	permission bypass is intentional and scoped to Notification Log creation.
+	"""
 	users = frappe.db.get_all(
 		"Has Role",
 		filters={"role": role, "parenttype": "User"},
@@ -244,22 +277,29 @@ def send_tax_deadline_digest():
 
 	Sends an HTML email digest to Accounts Manager.
 	"""
-	_today = getdate(today())
-	company = frappe.defaults.get_user_default("Company") or _("All Companies")
+	try:
+		_today = getdate(today())
+		company = frappe.defaults.get_user_default("Company") or _("All Companies")
 
-	# Build deadline entries
-	deadlines = _compute_upcoming_deadlines(_today)
+		# Build deadline entries
+		deadlines = _compute_upcoming_deadlines(_today)
 
-	# Only send if we're within 7 days of any deadline
-	urgent = [d for d in deadlines if d["urgency"] in ("overdue", "due_soon")]
-	if not urgent:
-		return
+		# Only send if we're within 7 days of any deadline
+		urgent = [d for d in deadlines if d["urgency"] in ("overdue", "due_soon")]
+		if not urgent:
+			return
 
-	html = _build_deadline_email(company, deadlines, _today)
-	subject = _("Ethiopian Tax Deadline Digest — {0}").format(format_date(_today))
+		html = _build_deadline_email(company, deadlines, _today)
+		subject = _("Ethiopian Tax Deadline Digest — {0}").format(format_date(_today))
 
-	notify_users_with_role("Accounts Manager", subject, html)
-	notify_users_with_role("System Manager", subject, html)
+		notify_users_with_role("Accounts Manager", subject, html)
+		notify_users_with_role("System Manager", subject, html)
+	except Exception:
+		frappe.log_error(title="send_tax_deadline_digest failed")
+		_critical_alert_email(
+			subject="CRITICAL: send_tax_deadline_digest failed",
+			body=f"<pre>{frappe.get_traceback()}</pre>"
+		)
 
 
 def _compute_upcoming_deadlines(today_date):

@@ -125,10 +125,12 @@ def get_tax_summary(company, from_date, to_date):
 
 		# TOT Summary - uses configured TOT account from Compliance Setting
 		tot_data = None
+		tot_configured = False
 		try:
 			settings = frappe.get_cached_doc("Compliance Setting")
 			if settings.get("tot_account"):
 				tot_account = settings.tot_account
+				tot_configured = True
 				tot_data = frappe.db.sql("""
 					SELECT
 						SUM(si.base_net_total) as total_turnover,
@@ -155,7 +157,8 @@ def get_tax_summary(company, from_date, to_date):
 			'tot': {
 				'total_turnover': flt(tot_data[0].total_turnover) if tot_data and tot_data[0].total_turnover else 0,
 				'total_tot': flt(tot_data[0].total_tot) if tot_data and tot_data[0].total_tot else 0
-			}
+			},
+			'tot_configured': tot_configured
 		}
 
 	result = _fetch()
