@@ -29,6 +29,21 @@ doc_events = {
 			"ethiopia_compliance.accounts.invoice_logic.validate_fs_number"
 		]
 	},
+	"Payment Entry": {
+		"validate": [
+			"ethiopia_compliance.accounts.payment_logic.validate_cash_limits"
+		]
+	},
+	"Supplier": {
+		"validate": [
+			"ethiopia_compliance.utils.tin_validator.validate_party_tin"
+		]
+	},
+	"Customer": {
+		"validate": [
+			"ethiopia_compliance.utils.tin_validator.validate_party_tin"
+		]
+	},
 	"Employee": {
 		"validate": [
 			"ethiopia_compliance.hr.employee_logic.validate_employee"

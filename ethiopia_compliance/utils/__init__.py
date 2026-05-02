@@ -123,6 +123,9 @@ def compute_paye_tax(taxable_income):
 	"""
 	Compute Ethiopian PAYE (Pay As You Earn) income tax per Proclamation No. 1395/2025.
 
+	Uses ERPNext Income Tax Slabs dynamically. Falls back to hardcoded brackets
+	if no slab is found in the database.
+
 	Brackets (effective July 2025):
 		0 - 2,000:     0%
 		2,001 - 4,000:  15%  (cumulative: 300)
@@ -143,6 +146,85 @@ def compute_paye_tax(taxable_income):
 
 	if taxable <= 0:
 		return 0.0
+
+	# Attempt to fetch active ERPNext Income Tax Slab
+	slabs = _fetch_income_tax_slabs()
+
+	if slabs:
+		return _compute_from_slabs(taxable, slabs)
+
+	# Fallback: hardcoded brackets per Proclamation No. 1395/2025
+	return _compute_fallback(taxable)
+
+
+def _fetch_income_tax_slabs():
+	"""Fetch active Income Tax Slab details from ERPNext, sorted by from_amount."""
+	try:
+		# Fetch the slab with the most recent effective_from date
+		slab_name = frappe.db.get_value(
+			"Income Tax Slab",
+			{},
+			"name",
+			order_by="effective_from desc"
+		)
+		if not slab_name:
+			return None
+
+		details = frappe.db.get_all(
+			"Income Tax Slab Detail",
+			filters={"parent": slab_name},
+			fields=["from_amount", "to_amount", "percent_deduction"],
+			order_by="from_amount asc"
+		)
+		if not details:
+			return None
+
+		return [
+			{
+				"from_amount": flt(d.from_amount),
+				"to_amount": flt(d.to_amount),
+				"rate": flt(d.percent_deduction) / 100.0
+			}
+			for d in details
+		]
+	except Exception:
+		return None
+
+
+def _compute_from_slabs(taxable, slabs):
+	"""Compute progressive PAYE tax from ERPNext slab definitions."""
+	from frappe.utils import flt
+
+	tax = 0.0
+
+	for slab in slabs:
+		from_amt = slab["from_amount"]
+		to_amt = slab["to_amount"]
+		rate = slab["rate"]
+
+		if to_amt <= 0:
+			# Unbounded top bracket
+			if taxable >= from_amt:
+				bracket_width = taxable - from_amt + 1
+				tax += bracket_width * rate
+			break
+
+		if taxable > to_amt:
+			# Full bracket applies
+			bracket_width = to_amt - from_amt + 1
+			tax += bracket_width * rate
+		else:
+			# Taxable falls within this bracket
+			bracket_width = taxable - from_amt + 1
+			tax += bracket_width * rate
+			break
+
+	return flt(tax, 2)
+
+
+def _compute_fallback(taxable):
+	"""Hardcoded fallback: PAYE brackets per Proclamation No. 1395/2025."""
+	from frappe.utils import flt
 
 	brackets = [
 		(2000, 0.00, 0),

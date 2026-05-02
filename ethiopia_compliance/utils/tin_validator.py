@@ -160,3 +160,38 @@ def check_duplicate_tin(doctype, tin_number, exclude_name=None):
 		'duplicate': bool(existing),
 		'existing_record': existing
 	}
+
+
+def validate_party_tin(doc, method):
+	"""Strict TIN format validation for Supplier and Customer party masters.
+
+	Ensures tax_id is exactly 10 numeric digits. Hooked to Supplier and
+	Customer validate events via hooks.py.
+
+	Args:
+		doc: Supplier or Customer document
+		method: Hook method name (unused)
+	"""
+	if not doc.tax_id:
+		return
+
+	tin_clean = str(doc.tax_id).replace("-", "").replace(" ", "").strip()
+
+	if not tin_clean:
+		return
+
+	if not tin_clean.isdigit():
+		frappe.throw(
+			_("TIN must contain only digits. Found: {0}").format(doc.tax_id)
+		)
+
+	if len(tin_clean) != 10:
+		frappe.throw(
+			_("TIN must be exactly 10 digits. Input has {0} digits. "
+			  "Please verify the Tax Identification Number for {1}.").format(
+				len(tin_clean), doc.name
+			)
+		)
+
+	# Clean and normalize
+	doc.tax_id = tin_clean
