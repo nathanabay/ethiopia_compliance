@@ -8,10 +8,19 @@ from frappe.utils import flt
 
 class WHTCertificate(Document):
 	def before_save(self):
-		"""Validate dates and generate certificate data"""
+		"""Validate dates, check TIN, and apply penalty rate"""
 		if self.period_from and self.period_to:
 			if frappe.utils.getdate(self.period_from) > frappe.utils.getdate(self.period_to):
 				frappe.throw("Period From cannot be after Period To")
+
+		# Auto-check penalty rate if supplier TIN is missing
+		if not self.supplier_tin:
+			self.penalty_rate_applies = 1
+			self.wht_rate = 30.0
+		else:
+			self.penalty_rate_applies = 0
+			if not self.wht_rate or self.wht_rate == 30.0:
+				self.wht_rate = 3.0
 	
 	def before_submit(self):
 		"""Generate certificate data before submission"""
@@ -74,9 +83,13 @@ class WHTCertificate(Document):
 		self.total_purchase_amount = total_purchase
 		self.total_wht_deducted = total_wht
 		
-		# Calculate average WHT rate
-		if total_purchase > 0:
-			self.wht_rate = (total_wht / total_purchase) * 100
+		# Set WHT rate: use penalty rate (30%) if TIN missing, else actual rate (default 3%)
+		if self.penalty_rate_applies:
+			self.wht_rate = 30.0
+		elif total_purchase > 0:
+			self.wht_rate = flt((total_wht / total_purchase) * 100, 2)
+		else:
+			self.wht_rate = 3.0
 
 
 @frappe.whitelist()

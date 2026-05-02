@@ -19,6 +19,7 @@
   "column_break_tax2",
   "total_wht_deducted",
   "wht_rate",
+  "penalty_rate_applies",
   "section_break_details",
   "invoice_details",
   "section_break_status",
@@ -110,10 +111,19 @@
    "read_only": 1
   },
   {
+   "default": 3,
    "fieldname": "wht_rate",
    "fieldtype": "Percent",
    "label": "WHT Rate",
-   "read_only": 1
+   "read_only": 0
+  },
+  {
+   "default": 0,
+   "depends_on": "eval:!doc.supplier_tin",
+   "description": "Automatically checked when supplier TIN is missing. Applies 30% penalty rate per Proclamation 1395/2025.",
+   "fieldname": "penalty_rate_applies",
+   "fieldtype": "Check",
+   "label": "Penalty Rate Applies (30%)"
   },
   {
    "fieldname": "section_break_details",
