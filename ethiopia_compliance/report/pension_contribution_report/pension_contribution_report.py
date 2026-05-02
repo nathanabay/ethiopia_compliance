@@ -3,7 +3,11 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate
+from frappe.utils import flt
+
+BASIC_COMPONENTS = {"Basic Salary", "Basic"}
+ORG_PENSION_COMPONENTS = {"Pension (Employer)", "Employer Pension", "Employer Pension (11%)"}
+EMP_PENSION_COMPONENTS = {"Pension (Employee)", "Employee Pension", "Employee Pension (7%)"}
 
 def execute(filters=None):
     columns = get_columns()
@@ -50,6 +54,12 @@ def get_columns():
             "width": 120
         },
         {
+            "fieldname": "gross_pay",
+            "label": _("Gross Pay"),
+            "fieldtype": "Currency",
+            "width": 120
+        },
+        {
             "fieldname": "total_pension",
             "label": _("Total Pension"),
             "fieldtype": "Currency",
@@ -58,69 +68,33 @@ def get_columns():
     ]
 
 def get_data(filters):
-    data = []
-    
     # Calculate start and end date based on month/year
     month_map = {
-        "January": 1, "February": 2, "March": 3, "April": 4, 
-        "May": 5, "June": 6, "July": 7, "August": 8, 
+        "January": 1, "February": 2, "March": 3, "April": 4,
+        "May": 5, "June": 6, "July": 7, "August": 8,
         "September": 9, "October": 10, "November": 11, "December": 12
     }
-    
-    month_idx = month_map.get(filters.get("month"))
+
+    month_name = filters.get("month")
+    if not month_name or month_name not in month_map:
+        frappe.throw(_("A valid Month is required."))
+    if not filters.get("year") or not filters.get("company"):
+        frappe.throw(_("Company and Year are required filters."))
+
+    month_idx = month_map[month_name]
     year = int(filters.get("year"))
     
+    from calendar import monthrange
+    _, last_day = monthrange(year, month_idx)
     start_date = f"{year}-{month_idx:02d}-01"
-    
-    # Get Salary Slips
-    salary_slips = frappe.db.sql("""
-        SELECT 
-            ss.employee,
-            ss.employee_name,
-            emp.custom_pension_number as pension_number,
-            ss.gross_pay,
-            ss.base_gross_pay,
-            ss.earnings,
-            ss.deductions
-        FROM `tabSalary Slip` ss
-        LEFT JOIN `tabEmployee` emp ON ss.employee = emp.name
-        WHERE ss.docstatus = 1
-        AND ss.company = %(company)s
-        AND MONTH(ss.start_date) = %(month)s
-        AND YEAR(ss.start_date) = %(year)s
-    """, {
-        "company": filters.get("company"),
-        "month": month_idx,
-        "year": year
-    }, as_dict=True)
-    
-    for slip in salary_slips:
-        # We need to extract specific components from earnings/deductions json or child tables
-        # For simplicity in this implementation, we'll try to calculate or fetch if available
-        # In a real implementation, we would query the child tables `Salary Detail`
-        
-        # Get actual components
-        components = frappe.db.sql("""
-            SELECT salary_component, amount, amount_based_on_formula 
-            FROM `tabSalary Detail` 
-            WHERE parent = %(slip)s
-        """, {"slip": slip.employee}, as_dict=True) # Logic error here, should be slip.name not employee, fixing in next logic
-    
-    # Correct Logic:
-    # 1. Fetch all salary slips IDs
-    # 2. For each, get components
-    
-    slip_names = [s.name for s in frappe.get_all("Salary Slip", filters={
-        "docstatus": 1,
-        "company": filters.get("company"),
-        "start_date": ["between", [start_date, f"{year}-{month_idx:02d}-31"]] # Simplified
-    }, fields=["name", "employee", "employee_name"])]
-    
-    # Better SQL approach
+    end_date = f"{year}-{month_idx:02d}-{last_day:02d}"
+
+    # Single parameterized query to fetch slips with their components
     entries = frappe.db.sql("""
-        SELECT 
+        SELECT
             ss.employee,
             ss.employee_name,
+            ss.gross_pay,
             emp.custom_pension_number,
             sd.salary_component,
             sd.amount
@@ -128,18 +102,18 @@ def get_data(filters):
         JOIN `tabSalary Detail` sd ON sd.parent = ss.name
         LEFT JOIN `tabEmployee` emp ON ss.employee = emp.name
         WHERE ss.company = %(company)s
-        AND MONTH(ss.start_date) = %(month)s
-        AND YEAR(ss.start_date) = %(year)s
+        AND ss.start_date >= %(start_date)s
+        AND ss.start_date <= %(end_date)s
         AND ss.docstatus = 1
     """, {
         "company": filters.get("company"),
-        "month": month_idx,
-        "year": year
+        "start_date": start_date,
+        "end_date": end_date
     }, as_dict=True)
-    
+
     # Process data
     emp_map = {}
-    
+
     for row in entries:
         emp = row.employee
         if emp not in emp_map:
@@ -147,29 +121,22 @@ def get_data(filters):
                 "employee": row.employee,
                 "employee_name": row.employee_name,
                 "pension_number": row.custom_pension_number,
+                "gross_pay": flt(row.gross_pay),
                 "basic_salary": 0,
                 "org_pension": 0,
                 "emp_pension": 0
             }
         
-        # Check component names - these should be configured or standard
-        # Asumptions for standard ERPNext / Ethiopia setup
-        if "Basic" in row.salary_component:
+        # Classify component by exact match
+        if row.salary_component in BASIC_COMPONENTS:
             emp_map[emp]["basic_salary"] += flt(row.amount)
-        elif "Pension (Employer)" in row.salary_component or "11%" in row.salary_component:
+        elif row.salary_component in ORG_PENSION_COMPONENTS:
             emp_map[emp]["org_pension"] += flt(row.amount)
-        elif "Pension (Employee)" in row.salary_component or "7%" in row.salary_component:
+        elif row.salary_component in EMP_PENSION_COMPONENTS:
             emp_map[emp]["emp_pension"] += flt(row.amount)
     
     for emp, vals in emp_map.items():
-        # If values are 0, try to calculate based on basic (fallback)
-        if vals["basic_salary"] > 0:
-            if vals["org_pension"] == 0:
-                vals["org_pension"] = vals["basic_salary"] * 0.11
-            if vals["emp_pension"] == 0:
-                vals["emp_pension"] = vals["basic_salary"] * 0.07
-        
+        vals["gross_pay"] = flt(vals.get("gross_pay", 0))
         vals["total_pension"] = vals["org_pension"] + vals["emp_pension"]
-        data.append(vals)
-        
-    return data
+
+    return list(emp_map.values())

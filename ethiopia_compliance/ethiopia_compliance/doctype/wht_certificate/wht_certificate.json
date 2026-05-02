@@ -1,204 +1,222 @@
 {
-    "actions": [],
-    "autoname": "format:WHT-CERT-{YYYY}-{#####}",
-    "creation": "2026-02-16 13:00:00.000000",
-    "doctype": "DocType",
-    "engine": "InnoDB",
-    "field_order": [
-        "section_break_supplier",
-        "supplier",
-        "supplier_name",
-        "supplier_tin",
-        "column_break_period",
-        "period_from",
-        "period_to",
-        "fiscal_year",
-        "section_break_tax",
-        "company",
-        "total_purchase_amount",
-        "column_break_tax2",
-        "total_wht_deducted",
-        "wht_rate",
-        "section_break_details",
-        "invoice_details",
-        "section_break_status",
-        "status",
-        "column_break_status2",
-        "issued_by",
-        "issued_on",
-        "amended_from"
-    ],
-    "fields": [
-        {
-            "fieldname": "section_break_supplier",
-            "fieldtype": "Section Break",
-            "label": "Supplier Information"
-        },
-        {
-            "fieldname": "supplier",
-            "fieldtype": "Link",
-            "label": "Supplier",
-            "options": "Supplier",
-            "reqd": 1
-        },
-        {
-            "fetch_from": "supplier.supplier_name",
-            "fieldname": "supplier_name",
-            "fieldtype": "Data",
-            "label": "Supplier Name",
-            "read_only": 1
-        },
-        {
-            "fetch_from": "supplier.tax_id",
-            "fieldname": "supplier_tin",
-            "fieldtype": "Data",
-            "label": "Supplier TIN",
-            "read_only": 1
-        },
-        {
-            "fieldname": "column_break_period",
-            "fieldtype": "Column Break"
-        },
-        {
-            "fieldname": "period_from",
-            "fieldtype": "Date",
-            "label": "Period From",
-            "reqd": 1
-        },
-        {
-            "fieldname": "period_to",
-            "fieldtype": "Date",
-            "label": "Period To",
-            "reqd": 1
-        },
-        {
-            "fieldname": "fiscal_year",
-            "fieldtype": "Link",
-            "label": "Fiscal Year",
-            "options": "Fiscal Year"
-        },
-        {
-            "fieldname": "section_break_tax",
-            "fieldtype": "Section Break",
-            "label": "Tax Summary"
-        },
-        {
-            "fieldname": "company",
-            "fieldtype": "Link",
-            "label": "Company",
-            "options": "Company",
-            "reqd": 1
-        },
-        {
-            "fieldname": "total_purchase_amount",
-            "fieldtype": "Currency",
-            "label": "Total Purchase Amount",
-            "read_only": 1
-        },
-        {
-            "fieldname": "column_break_tax2",
-            "fieldtype": "Column Break"
-        },
-        {
-            "fieldname": "total_wht_deducted",
-            "fieldtype": "Currency",
-            "label": "Total WHT Deducted",
-            "read_only": 1
-        },
-        {
-            "fieldname": "wht_rate",
-            "fieldtype": "Percent",
-            "label": "WHT Rate",
-            "read_only": 1
-        },
-        {
-            "fieldname": "section_break_details",
-            "fieldtype": "Section Break",
-            "label": "Invoice Details"
-        },
-        {
-            "fieldname": "invoice_details",
-            "fieldtype": "Table",
-            "label": "Invoice Details",
-            "options": "WHT Certificate Invoice",
-            "read_only": 1
-        },
-        {
-            "fieldname": "section_break_status",
-            "fieldtype": "Section Break",
-            "label": "Certificate Status"
-        },
-        {
-            "default": "Draft",
-            "fieldname": "status",
-            "fieldtype": "Select",
-            "label": "Status",
-            "options": "Draft\nIssued\nCancelled"
-        },
-        {
-            "fieldname": "column_break_status2",
-            "fieldtype": "Column Break"
-        },
-        {
-            "fieldname": "issued_by",
-            "fieldtype": "Link",
-            "label": "Issued By",
-            "options": "User",
-            "read_only": 1
-        },
-        {
-            "fieldname": "issued_on",
-            "fieldtype": "Datetime",
-            "label": "Issued On",
-            "read_only": 1
-        },
-        {
-            "fieldname": "amended_from",
-            "fieldtype": "Link",
-            "label": "Amended From",
-            "options": "WHT Certificate",
-            "read_only": 1
-        }
-    ],
-    "index_web_pages_for_search": 1,
-    "is_submittable": 1,
-    "links": [],
-    "modified": "2026-02-16 13:00:00.000000",
-    "modified_by": "Administrator",
-    "module": "Ethiopia Compliance",
-    "name": "WHT Certificate",
-    "naming_rule": "Expression",
-    "owner": "Administrator",
-    "permissions": [
-        {
-            "create": 1,
-            "delete": 1,
-            "email": 1,
-            "export": 1,
-            "print": 1,
-            "read": 1,
-            "report": 1,
-            "role": "Accounts User",
-            "share": 1,
-            "submit": 1,
-            "write": 1
-        },
-        {
-            "create": 1,
-            "delete": 1,
-            "email": 1,
-            "export": 1,
-            "print": 1,
-            "read": 1,
-            "report": 1,
-            "role": "Accounts Manager",
-            "share": 1,
-            "submit": 1,
-            "write": 1
-        }
-    ],
-    "sort_field": "modified",
-    "sort_order": "DESC",
-    "states": [],
-    "track_changes": 1
+ "actions": [],
+ "autoname": "format:WHT-CERT-{YYYY}-{#####}",
+ "creation": "2026-02-16 13:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_supplier",
+  "supplier",
+  "supplier_name",
+  "supplier_tin",
+  "column_break_period",
+  "period_from",
+  "period_to",
+  "fiscal_year",
+  "section_break_tax",
+  "company",
+  "total_purchase_amount",
+  "column_break_tax2",
+  "total_wht_deducted",
+  "wht_rate",
+  "section_break_details",
+  "invoice_details",
+  "section_break_status",
+  "status",
+  "column_break_status2",
+  "issued_by",
+  "issued_on",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_supplier",
+   "fieldtype": "Section Break",
+   "label": "Supplier Information"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Supplier",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "supplier.supplier_name",
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "supplier.tax_id",
+   "fieldname": "supplier_tin",
+   "fieldtype": "Data",
+   "label": "Supplier TIN",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_period",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "period_from",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Period From",
+   "reqd": 1
+  },
+  {
+   "fieldname": "period_to",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Period To",
+   "reqd": 1
+  },
+  {
+   "fieldname": "fiscal_year",
+   "fieldtype": "Link",
+   "label": "Fiscal Year",
+   "options": "Fiscal Year"
+  },
+  {
+   "fieldname": "section_break_tax",
+   "fieldtype": "Section Break",
+   "label": "Tax Summary"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "total_purchase_amount",
+   "fieldtype": "Currency",
+   "label": "Total Purchase Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_tax2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_wht_deducted",
+   "fieldtype": "Currency",
+   "label": "Total WHT Deducted",
+   "read_only": 1
+  },
+  {
+   "fieldname": "wht_rate",
+   "fieldtype": "Percent",
+   "label": "WHT Rate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_details",
+   "fieldtype": "Section Break",
+   "label": "Invoice Details"
+  },
+  {
+   "fieldname": "invoice_details",
+   "fieldtype": "Table",
+   "label": "Invoice Details",
+   "options": "WHT Certificate Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_status",
+   "fieldtype": "Section Break",
+   "label": "Certificate Status"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nIssued\nCancelled"
+  },
+  {
+   "fieldname": "column_break_status2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "issued_by",
+   "fieldtype": "Link",
+   "label": "Issued By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "issued_on",
+   "fieldtype": "Datetime",
+   "label": "Issued On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "WHT Certificate",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-04-30 20:57:37.357115",
+ "modified_by": "nathanamare@bespo.et",
+ "module": "Ethiopia Compliance",
+ "name": "WHT Certificate",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
 }

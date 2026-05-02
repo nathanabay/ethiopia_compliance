@@ -1,15 +1,21 @@
+# Copyright (c) 2026, Bespo and contributors
+# For license information, please see license.txt
 
 import frappe
+from frappe import _
 
 def execute(filters=None):
+	if filters is None:
+		filters = {}
+
 	columns = [
-		{"fieldname": "tin", "label": "Supplier TIN", "fieldtype": "Data", "width": 140},
-		{"fieldname": "name", "label": "Supplier Name", "fieldtype": "Data", "width": 180},
-		{"fieldname": "inv_no", "label": "Invoice No", "fieldtype": "Data", "width": 120},
-		{"fieldname": "date", "label": "Date", "fieldtype": "Date", "width": 100},
-		{"fieldname": "taxable", "label": "Taxable Amount", "fieldtype": "Currency", "width": 120},
-		{"fieldname": "rate", "label": "Rate", "fieldtype": "Percent", "width": 80},
-		{"fieldname": "wht_amount", "label": "Tax Withheld", "fieldtype": "Currency", "width": 120}
+		{"fieldname": "tin", "label": _("Supplier TIN"), "fieldtype": "Data", "width": 140},
+		{"fieldname": "name", "label": _("Supplier Name"), "fieldtype": "Data", "width": 180},
+		{"fieldname": "inv_no", "label": _("Invoice No"), "fieldtype": "Data", "width": 120},
+		{"fieldname": "date", "label": _("Date"), "fieldtype": "Date", "width": 100},
+		{"fieldname": "taxable", "label": _("Taxable Amount"), "fieldtype": "Currency", "width": 120},
+		{"fieldname": "rate", "label": _("Rate"), "fieldtype": "Percent", "width": 80},
+		{"fieldname": "wht_amount", "label": _("Tax Withheld"), "fieldtype": "Currency", "width": 120}
 	]
 
 	conditions = ["p.docstatus = 1"]
@@ -31,13 +37,16 @@ def execute(filters=None):
 			p.supplier_name as name,
 			p.bill_no as inv_no,
 			p.bill_date as date,
-			p.total as taxable,
-			'3%' as rate,
+			p.base_total as taxable,
+			t.rate as rate,
 			ABS(t.tax_amount) as wht_amount
 		FROM `tabPurchase Taxes and Charges` t
 		JOIN `tabPurchase Invoice` p ON t.parent = p.name
-		WHERE t.account_head LIKE '%%Withholding%%'
+		WHERE t.account_head LIKE %(wht_account)s
 			AND {where}
-	""".format(where=" AND ".join(conditions)), values, as_dict=True)
+	""".format(where=" AND ".join(conditions)), {
+		**values,
+		"wht_account": "%%Withholding%%"
+	}, as_dict=True)
 
 	return columns, data

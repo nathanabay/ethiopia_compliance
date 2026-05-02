@@ -13,8 +13,7 @@ ethiopia_compliance.calendar.check_enabled = function (callback) {
     }
 
     frappe.call({
-        method: 'frappe.client.get_single',
-        args: { doctype: 'Compliance Setting' },
+        method: 'ethiopia_compliance.utils.get_calendar_settings',
         callback: function (r) {
             if (r.message && r.message.enable_ethiopian_calendar !== undefined) {
                 ethiopia_compliance.calendar.enabled = r.message.enable_ethiopian_calendar;

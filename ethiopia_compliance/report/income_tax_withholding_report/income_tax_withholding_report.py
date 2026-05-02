@@ -3,7 +3,12 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate
+from frappe.utils import flt
+
+BASIC_COMPONENTS = {"Basic Salary", "Basic"}
+INCOME_TAX_COMPONENTS = {"Income Tax", "PAYE", "Employment Income Tax"}
+COST_SHARING_COMPONENTS = {"Cost Sharing", "Cost Sharing (Employee)"}
+EMP_PENSION_COMPONENTS = {"Pension (Employee)", "Employee Pension", "Employee Pension (7%)"}
 
 def execute(filters=None):
     columns = get_columns()
@@ -64,42 +69,53 @@ def get_columns():
     ]
 
 def get_data(filters):
-    data = []
-    
     month_map = {
-        "January": 1, "February": 2, "March": 3, "April": 4, 
-        "May": 5, "June": 6, "July": 7, "August": 8, 
+        "January": 1, "February": 2, "March": 3, "April": 4,
+        "May": 5, "June": 6, "July": 7, "August": 8,
         "September": 9, "October": 10, "November": 11, "December": 12
     }
-    
-    month_idx = month_map.get(filters.get("month"))
+
+    month_name = filters.get("month")
+    if not month_name or month_name not in month_map:
+        frappe.throw(_("A valid Month is required."))
+    if not filters.get("year") or not filters.get("company"):
+        frappe.throw(_("Company and Year are required filters."))
+
+    month_idx = month_map[month_name]
     year = int(filters.get("year"))
     
-    # Get Salary Slips with Component Details
+    # Calculate date range from month/year to avoid MONTH()/YEAR() in WHERE
+    from calendar import monthrange
+    _, last_day = monthrange(year, month_idx)
+    start_date = f"{year}-{month_idx:02d}-01"
+    end_date = f"{year}-{month_idx:02d}-{last_day:02d}"
+
+    # Get Salary Slips with Component Details in a single batched query
     entries = frappe.db.sql("""
-        SELECT 
+        SELECT
             ss.employee,
             ss.employee_name,
             emp.tax_id as tin_number,
             ss.net_pay,
+            ss.gross_pay,
             sd.salary_component,
             sd.amount
         FROM `tabSalary Slip` ss
         JOIN `tabSalary Detail` sd ON sd.parent = ss.name
         LEFT JOIN `tabEmployee` emp ON ss.employee = emp.name
         WHERE ss.company = %(company)s
-        AND MONTH(ss.start_date) = %(month)s
-        AND YEAR(ss.start_date) = %(year)s
+        AND ss.start_date >= %(start_date)s
+        AND ss.start_date <= %(end_date)s
         AND ss.docstatus = 1
     """, {
         "company": filters.get("company"),
-        "month": month_idx,
-        "year": year
+        "start_date": start_date,
+        "end_date": end_date
     }, as_dict=True)
-    
-    # Process data
+
+    # Process data in a single pass — no N+1 queries
     emp_map = {}
-    
+
     for row in entries:
         emp = row.employee
         if emp not in emp_map:
@@ -108,44 +124,27 @@ def get_data(filters):
                 "employee_name": row.employee_name,
                 "tin_number": row.tin_number,
                 "basic_salary": 0,
+                "gross_pay": flt(row.gross_pay),
                 "taxable_income": 0,
                 "income_tax": 0,
                 "cost_sharing": 0,
+                "emp_pension": 0,
                 "net_pay": flt(row.net_pay)
             }
-        
-        # Categorize components
-        if "Basic" in row.salary_component:
+
+        # Categorize components by exact match
+        if row.salary_component in BASIC_COMPONENTS:
             emp_map[emp]["basic_salary"] += flt(row.amount)
-            # Assuming Basic is Taxable, usually Gross Pay is better but simplified here
-            # In perfect world, we check is_tax_applicable in Salary Component
-        
-        # For Taxable Income, usually we want Gross - Non-Taxable Allowances
-        # Here we'll sum up earnings that are taxable. 
-        # But simpler: use Income Tax amount to reverse calculate or just display components
-        
-        if "Income Tax" in row.salary_component:
+        elif row.salary_component in INCOME_TAX_COMPONENTS:
             emp_map[emp]["income_tax"] += flt(row.amount)
-            
-        if "Cost Sharing" in row.salary_component:
+        elif row.salary_component in COST_SHARING_COMPONENTS:
             emp_map[emp]["cost_sharing"] += flt(row.amount)
-            
-    # Second pass for Taxable Income (Approximate if not storing explicitly)
-    # Ideally should fetch 'gross_pay' from SS, but let's query SS directly for gross
-    
-    for emp_id, vals in emp_map.items():
-        # Get Gross Pay from Salary Slip directly
-        gross = frappe.db.get_value("Salary Slip", {
-            "employee": emp_id, 
-            "month": month_idx, # This filter is tricky via get_value with SQL calc functions
-            "company": filters.get("company"),
-            "docstatus": 1
-        }, "gross_pay")
-        
-        # Determine Taxable Income (Gross - Non-Taxable)
-        # For now, let's assume Taxable Income = Gross Pay (User can adjust filter logic)
-        vals["taxable_income"] = flt(gross)
-        
-        data.append(vals)
-        
+        elif row.salary_component in EMP_PENSION_COMPONENTS:
+            emp_map[emp]["emp_pension"] += flt(row.amount)
+
+    # Compute taxable income: gross pay minus employee pension (7%)
+    for emp_data in emp_map.values():
+        emp_data["taxable_income"] = emp_data["gross_pay"] - emp_data["emp_pension"]
+
+    data = list(emp_map.values())
     return data

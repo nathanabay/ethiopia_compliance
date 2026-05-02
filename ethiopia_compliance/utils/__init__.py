@@ -16,6 +16,7 @@ from ethiopia_compliance.utils.tin_validator import (
 __all__ = [
 	'get_ec_date',
 	'get_gc_date',
+	'get_calendar_settings',
 	'validate_tin',
 	'validate_individual_tin',
 	'validate_company_tin',
@@ -27,7 +28,7 @@ __all__ = [
 
 # --- ETHIOPIAN CALENDAR LOGIC ---
 
-@frappe.whitelist(methods=["GET"], xss_safe=True)
+@frappe.whitelist(methods=["GET", "POST"], xss_safe=True)
 def get_ec_date(date: str) -> str:
 	"""API Endpoint: Convert Gregorian to Ethiopian"""
 	if not date:
@@ -61,7 +62,7 @@ def get_ec_date(date: str) -> str:
 		return ""
 
 
-@frappe.whitelist(methods=["GET"], xss_safe=True)
+@frappe.whitelist(methods=["GET", "POST"], xss_safe=True)
 def get_gc_date(ethiopian_date: str) -> str:
 	"""API Endpoint: Convert Ethiopian DD-MM-YYYY to Gregorian"""
 	if not ethiopian_date:
@@ -101,3 +102,15 @@ def get_gc_date(ethiopian_date: str) -> str:
 	except Exception:
 		frappe.log_error(title="GC Date Conversion Error")
 		return ""
+
+
+@frappe.whitelist(methods=["GET", "POST"], xss_safe=True)
+def get_calendar_settings() -> dict:
+	"""API Endpoint: Get Ethiopian calendar settings from Compliance Setting"""
+	try:
+		settings = frappe.get_cached_doc("Compliance Setting")
+		return {
+			"enable_ethiopian_calendar": settings.get("enable_ethiopian_calendar") or 0
+		}
+	except Exception:
+		return {"enable_ethiopian_calendar": 1}

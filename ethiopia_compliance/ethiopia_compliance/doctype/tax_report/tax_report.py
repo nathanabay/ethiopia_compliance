@@ -325,7 +325,7 @@ def generate_html_summary(report_type, data):
 		return "<p>Report summary not available</p>"
 
 
-@frappe.whitelist(methods=["GET"], xss_safe=True)
+@frappe.whitelist(methods=["GET", "POST"], xss_safe=True)
 def export_to_excel(docname: str):
 	"""Export tax report to Excel"""
 	docname = str(docname)

@@ -1,56 +1,6 @@
 {
     "add_total_row": 1,
-    "columns": [
-        {
-            "fieldname": "employee",
-            "label": "Employee",
-            "fieldtype": "Link",
-            "options": "Employee",
-            "width": 120
-        },
-        {
-            "fieldname": "employee_name",
-            "label": "Employee Name",
-            "fieldtype": "Data",
-            "width": 150
-        },
-        {
-            "fieldname": "tin_number",
-            "label": "TIN Number",
-            "fieldtype": "Data",
-            "width": 120
-        },
-        {
-            "fieldname": "total_gross_pay",
-            "label": "Total Gross Pay",
-            "fieldtype": "Currency",
-            "width": 120
-        },
-        {
-            "fieldname": "total_taxable_income",
-            "label": "Total Taxable Income",
-            "fieldtype": "Currency",
-            "width": 140
-        },
-        {
-            "fieldname": "total_income_tax",
-            "label": "Total Income Tax",
-            "fieldtype": "Currency",
-            "width": 120
-        },
-        {
-            "fieldname": "total_pension",
-            "label": "Total Pension (7%)",
-            "fieldtype": "Currency",
-            "width": 120
-        },
-        {
-            "fieldname": "net_pay",
-            "label": "Total Net Pay",
-            "fieldtype": "Currency",
-            "width": 120
-        }
-    ],
+    "columns": [],
     "creation": "2026-02-16 13:00:00.000000",
     "doctype": "Report",
     "engine": "InnoDB",
@@ -60,14 +10,13 @@
             "label": "Company",
             "fieldtype": "Link",
             "options": "Company",
-            "default": "Bespo",
-            "reqd": 1
+                        "reqd": 1
         },
         {
             "fieldname": "year",
             "label": "Year",
             "fieldtype": "Select",
-            "options": "2024\n2025\n2026\n2027",
+            "options": "2024\n2025\n2026\n2027\n2028\n2029",
             "default": "2026",
             "reqd": 1
         }

@@ -3,7 +3,10 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate
+from frappe.utils import flt
+
+INCOME_TAX_COMPONENTS = {"Income Tax", "PAYE", "Employment Income Tax"}
+PENSION_COMPONENTS = {"Pension (Employee)", "Employee Pension", "Employee Pension (7%)"}
 
 def execute(filters=None):
     columns = get_columns()
@@ -64,60 +67,14 @@ def get_columns():
     ]
 
 def get_data(filters):
-    data = []
-    
+    if not filters.get("year") or not filters.get("company"):
+        frappe.throw(_("Company and Year are required filters."))
+
     year = int(filters.get("year"))
     start_date = f"{year}-01-01"
     end_date = f"{year}-12-31"
     
-    # Get Salary Slips with Component Details for the whole year
-    entries = frappe.db.sql("""
-        SELECT 
-            ss.employee,
-            ss.employee_name,
-            emp.tax_id as tin_number,
-            ss.gross_pay,
-            ss.net_pay,
-            sd.salary_component,
-            sd.amount
-        FROM `tabSalary Slip` ss
-        JOIN `tabSalary Detail` sd ON sd.parent = ss.name
-        LEFT JOIN `tabEmployee` emp ON ss.employee = emp.name
-        WHERE ss.company = %(company)s
-        AND ss.start_date BETWEEN %(start_date)s AND %(end_date)s
-        AND ss.docstatus = 1
-    """, {
-        "company": filters.get("company"),
-        "start_date": start_date,
-        "end_date": end_date
-    }, as_dict=True)
-    
-    # Process data
-    emp_map = {}
-    
-    for row in entries:
-        emp = row.employee
-        if emp not in emp_map:
-            emp_map[emp] = {
-                "employee": row.employee,
-                "employee_name": row.employee_name,
-                "tin_number": row.tin_number,
-                "total_gross_pay": 0,
-                "total_taxable_income": 0,
-                "total_income_tax": 0,
-                "total_pension": 0,
-                "net_pay": 0
-            }
-            
-        # For gross/net pay, we have duplication because of JOIN with Salary Detail
-        # Logic issue: Joining with Salary Detail causes multiplication of rows for same slip
-        # Better approach: Get slips first, then details, OR aggregation
-    
-    # Let's fix the logic
-    # 1. Get Employee totals from Salary Slips (Gross, Net)
-    # 2. Get Component totals from Details
-    
-    # A: Slips Aggregate
+    # A: Slips Aggregate — get totals from Salary Slips
     slips_agg = frappe.db.sql("""
         SELECT 
             ss.employee,
@@ -145,7 +102,7 @@ def get_data(filters):
             "employee_name": row.employee_name,
             "tin_number": row.tin_number,
             "total_gross_pay": flt(row.total_gross),
-            "total_taxable_income": flt(row.total_gross), # Approximation
+            "total_taxable_income": 0,
             "total_income_tax": 0,
             "total_pension": 0,
             "net_pay": flt(row.total_net)
@@ -171,9 +128,13 @@ def get_data(filters):
     
     for row in components_agg:
         if row.employee in final_data:
-            if "Income Tax" in row.salary_component:
+            if row.salary_component in INCOME_TAX_COMPONENTS:
                 final_data[row.employee]["total_income_tax"] += flt(row.total_amount)
-            if "Pension (Employee)" in row.salary_component or "7%" in row.salary_component:
+            if row.salary_component in PENSION_COMPONENTS:
                 final_data[row.employee]["total_pension"] += flt(row.total_amount)
     
+    # Compute taxable income: gross pay minus employee pension (7%)
+    for emp_data in final_data.values():
+        emp_data["total_taxable_income"] = emp_data["total_gross_pay"] - emp_data["total_pension"]
+
     return list(final_data.values())

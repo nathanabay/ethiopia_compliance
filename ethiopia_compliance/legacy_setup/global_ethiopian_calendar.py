@@ -48,59 +48,59 @@ def run():
     # ====================================================
     # 3. INJECT SYNC LOGIC
     # ====================================================
-    script_code = """
-frappe.ui.form.on(doc.doctype, {
-    refresh: function(frm) {
-        if (frm.doc.posting_date && !frm.doc.ethiopian_date) {
-            frm.trigger('posting_date');
-        }
-    },
-    posting_date: function(frm) { update_ethiopian(frm, 'posting_date'); },
-    transaction_date: function(frm) { update_ethiopian(frm, 'transaction_date'); },
-    attendance_date: function(frm) { update_ethiopian(frm, 'attendance_date'); },
-    from_date: function(frm) { update_ethiopian(frm, 'from_date'); },
-    
-    ethiopian_date: function(frm) {
-        if (frm.doc.ethiopian_date && frm.doc.ethiopian_date.length >= 8) {
-            frappe.call({
-                method: "ethiopia_compliance.utils.get_gc_date",
-                args: { ethiopian_date: frm.doc.ethiopian_date },
-                callback: function(r) {
-                    if (r.message) {
-                        let target = 'posting_date';
-                        if(frm.fields_dict['transaction_date']) target = 'transaction_date';
-                        if(frm.fields_dict['attendance_date']) target = 'attendance_date';
-                        if(frm.fields_dict['from_date']) target = 'from_date';
-                        
-                        frm.set_value(target, r.message);
-                        frappe.show_alert({message: "📅 Synced to Gregorian", indicator: "green"});
-                    }
-                }
-            });
-        }
-    }
-});
-
-function update_ethiopian(frm, fieldname) {
-    if (frm.doc[fieldname]) {
-        frappe.call({
-            method: "ethiopia_compliance.utils.get_ec_date",
-            args: { date: frm.doc[fieldname] },
-            callback: function(r) {
-                if (r.message && r.message !== frm.doc.ethiopian_date) {
-                    frm.set_value('ethiopian_date', r.message);
-                }
-            }
-        });
-    }
-}
-    """
-
     for dt in target_doctypes:
         script_name = f"EC Sync - {dt}"
         if frappe.db.exists("Client Script", script_name):
             frappe.delete_doc("Client Script", script_name)
-            
+
+        script_code = f"""
+frappe.ui.form.on('{dt}', {{
+    refresh: function(frm) {{
+        if (frm.doc.posting_date && !frm.doc.ethiopian_date) {{
+            frm.trigger('posting_date');
+        }}
+    }},
+    posting_date: function(frm) {{ update_ethiopian(frm, 'posting_date'); }},
+    transaction_date: function(frm) {{ update_ethiopian(frm, 'transaction_date'); }},
+    attendance_date: function(frm) {{ update_ethiopian(frm, 'attendance_date'); }},
+    from_date: function(frm) {{ update_ethiopian(frm, 'from_date'); }},
+
+    ethiopian_date: function(frm) {{
+        if (frm.doc.ethiopian_date && frm.doc.ethiopian_date.length >= 8) {{
+            frappe.call({{
+                method: "ethiopia_compliance.utils.get_gc_date",
+                args: {{ ethiopian_date: frm.doc.ethiopian_date }},
+                callback: function(r) {{
+                    if (r.message) {{
+                        let target = 'posting_date';
+                        if(frm.fields_dict['transaction_date']) target = 'transaction_date';
+                        if(frm.fields_dict['attendance_date']) target = 'attendance_date';
+                        if(frm.fields_dict['from_date']) target = 'from_date';
+
+                        frm.set_value(target, r.message);
+                        frappe.show_alert({{message: "📅 Synced to Gregorian", indicator: "green"}});
+                    }}
+                }}
+            }});
+        }}
+    }}
+}});
+
+function update_ethiopian(frm, fieldname) {{
+    if (frm.doc[fieldname]) {{
+        frappe.call({{
+            method: "ethiopia_compliance.utils.get_ec_date",
+            args: {{ date: frm.doc[fieldname] }},
+            callback: function(r) {{
+                if (r.message && r.message !== frm.doc.ethiopian_date) {{
+                    frm.set_value('ethiopian_date', r.message);
+                }}
+            }}
+        }});
+    }}
+}}
+"""
+
         doc = frappe.get_doc({
             "doctype": "Client Script",
             "dt": dt,

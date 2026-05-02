@@ -18,7 +18,7 @@
     "reference_report": null,
     "report_name": "SIGTAS Withholding Report",
     "report_script": null,
-    "report_type": "Query Report",
+    "report_type": "Script Report",
     "roles": [
         {
             "role": "Accounts User"

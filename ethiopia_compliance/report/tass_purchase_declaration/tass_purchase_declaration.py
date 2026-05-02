@@ -1,15 +1,21 @@
+# Copyright (c) 2026, Bespo and contributors
+# For license information, please see license.txt
 
 import frappe
+from frappe import _
 
 def execute(filters=None):
+	if filters is None:
+		filters = {}
+
 	columns = [
-		{"fieldname": "purchaser_tin", "label": "Purchaser TIN", "fieldtype": "Data", "width": 140},
-		{"fieldname": "seller_tin", "label": "Seller TIN", "fieldtype": "Data", "width": 140},
-		{"fieldname": "receipt_no", "label": "Receipt No", "fieldtype": "Data", "width": 120},
-		{"fieldname": "receipt_date", "label": "Receipt Date", "fieldtype": "Date", "width": 100},
-		{"fieldname": "calendar_type", "label": "Calendar (G/E)", "fieldtype": "Data", "width": 100},
-		{"fieldname": "amount", "label": "Amount", "fieldtype": "Currency", "width": 120},
-		{"fieldname": "purchase_type", "label": "Type (Goods/Services)", "fieldtype": "Data", "width": 150}
+		{"fieldname": "purchaser_tin", "label": _("Purchaser TIN"), "fieldtype": "Data", "width": 140},
+		{"fieldname": "seller_tin", "label": _("Seller TIN"), "fieldtype": "Data", "width": 140},
+		{"fieldname": "receipt_no", "label": _("Receipt No"), "fieldtype": "Data", "width": 120},
+		{"fieldname": "receipt_date", "label": _("Receipt Date"), "fieldtype": "Date", "width": 100},
+		{"fieldname": "calendar_type", "label": _("Calendar (G/E)"), "fieldtype": "Data", "width": 100},
+		{"fieldname": "amount", "label": _("Amount"), "fieldtype": "Currency", "width": 120},
+		{"fieldname": "purchase_type", "label": _("Type (Goods/Services)"), "fieldtype": "Data", "width": 150}
 	]
 
 	conditions = ["p.docstatus = 1"]
@@ -33,16 +39,15 @@ def execute(filters=None):
 			p.bill_date as receipt_date,
 			'G' as calendar_type,
 			p.grand_total as amount,
-			CASE
-				WHEN EXISTS(
-					SELECT 1 FROM `tabPurchase Invoice Item` pii
-					LEFT JOIN `tabItem` i ON pii.item_code = i.name
-					WHERE pii.parent = p.name AND i.is_stock_item = 0
-				) THEN 'Services'
-				ELSE 'Goods'
-			END as purchase_type
+			CASE WHEN svc.parent IS NOT NULL THEN 'Services' ELSE 'Goods' END as purchase_type
 		FROM `tabPurchase Invoice` p
 		JOIN `tabCompany` c ON p.company = c.name
+		LEFT JOIN (
+			SELECT DISTINCT pii.parent
+			FROM `tabPurchase Invoice Item` pii
+			JOIN `tabItem` i ON pii.item_code = i.name
+			WHERE i.is_stock_item = 0
+		) svc ON p.name = svc.parent
 		WHERE {where}
 	""".format(where=" AND ".join(conditions)), values, as_dict=True)
 

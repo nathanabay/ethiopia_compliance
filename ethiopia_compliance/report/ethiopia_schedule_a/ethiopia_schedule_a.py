@@ -1,20 +1,33 @@
+# Copyright (c) 2026, Bespo and contributors
+# For license information, please see license.txt
 
 import frappe
+from frappe import _
 from collections import defaultdict
+
+BASIC_COMPONENTS = {"Basic Salary", "Basic"}
+TRANSPORT_COMPONENTS = {"Transport Allowance", "Transport", "Transportation Allowance"}
+OVERTIME_COMPONENTS = {"Overtime", "Overtime Pay"}
+INCOME_TAX_COMPONENTS = {"Income Tax", "PAYE", "Employment Income Tax"}
+COST_SHARING_COMPONENTS = {"Cost Sharing", "Cost Sharing (Employee)"}
+EMP_PENSION_COMPONENTS = {"Pension (Employee)", "Employee Pension", "Employee Pension (7%)"}
 
 
 def execute(filters=None):
+	if filters is None:
+		filters = {}
+
 	columns = [
-		{"fieldname": "emp_tin", "label": "Employee TIN", "fieldtype": "Data", "width": 140},
-		{"fieldname": "emp_name", "label": "Employee Name", "fieldtype": "Data", "width": 200},
-		{"fieldname": "basic_salary", "label": "Basic Salary", "fieldtype": "Currency", "width": 120},
-		{"fieldname": "transport_taxable", "label": "Taxable Transport", "fieldtype": "Currency", "width": 120},
-		{"fieldname": "overtime", "label": "Overtime", "fieldtype": "Currency", "width": 100},
-		{"fieldname": "other_taxable", "label": "Other Taxable", "fieldtype": "Currency", "width": 120},
-		{"fieldname": "total_taxable", "label": "Total Taxable Income", "fieldtype": "Currency", "width": 140},
-		{"fieldname": "tax_withheld", "label": "Tax Withheld (PAYE)", "fieldtype": "Currency", "width": 140},
-		{"fieldname": "cost_sharing", "label": "Cost Sharing", "fieldtype": "Currency", "width": 100},
-		{"fieldname": "net_pay", "label": "Net Pay", "fieldtype": "Currency", "width": 120}
+		{"fieldname": "emp_tin", "label": _("Employee TIN"), "fieldtype": "Data", "width": 140},
+		{"fieldname": "emp_name", "label": _("Employee Name"), "fieldtype": "Data", "width": 200},
+		{"fieldname": "basic_salary", "label": _("Basic Salary"), "fieldtype": "Currency", "width": 120},
+		{"fieldname": "transport_taxable", "label": _("Taxable Transport"), "fieldtype": "Currency", "width": 120},
+		{"fieldname": "overtime", "label": _("Overtime"), "fieldtype": "Currency", "width": 100},
+		{"fieldname": "other_taxable", "label": _("Other Taxable"), "fieldtype": "Currency", "width": 120},
+		{"fieldname": "total_taxable", "label": _("Total Taxable Income"), "fieldtype": "Currency", "width": 140},
+		{"fieldname": "tax_withheld", "label": _("Tax Withheld (PAYE)"), "fieldtype": "Currency", "width": 140},
+		{"fieldname": "cost_sharing", "label": _("Cost Sharing"), "fieldtype": "Currency", "width": 100},
+		{"fieldname": "net_pay", "label": _("Net Pay"), "fieldtype": "Currency", "width": 120}
 	]
 
 	conditions = ["docstatus = 1"]
@@ -75,24 +88,23 @@ def execute(filters=None):
 		other = 0
 		tax = 0
 		cost_share = 0
+		emp_pension = 0
 
 		for c in components:
-			if c.salary_component in ("Basic Salary", "Basic"):
+			if c.salary_component in BASIC_COMPONENTS:
 				basic += c.amount
-			elif "Transport" in c.salary_component:
+			elif c.salary_component in TRANSPORT_COMPONENTS:
 				transport += c.amount
-			elif "Overtime" in c.salary_component:
+			elif c.salary_component in OVERTIME_COMPONENTS:
 				overtime += c.amount
-			elif c.salary_component in ("Income Tax", "PAYE"):
+			elif c.salary_component in INCOME_TAX_COMPONENTS:
 				tax += c.amount
-			elif "Cost Sharing" in c.salary_component:
+			elif c.salary_component in COST_SHARING_COMPONENTS:
 				cost_share += c.amount
+			elif c.salary_component in EMP_PENSION_COMPONENTS:
+				emp_pension += c.amount
 			elif c.type == "Earning" and c.amount > 0:
 				other += c.amount
-
-		other = other - basic - transport - overtime
-		if other < 0:
-			other = 0
 
 		row = {
 			"emp_tin": emp_tin,
@@ -101,7 +113,7 @@ def execute(filters=None):
 			"transport_taxable": transport,
 			"overtime": overtime,
 			"other_taxable": other,
-			"total_taxable": slip.gross_pay,
+			"total_taxable": slip.gross_pay - emp_pension,
 			"tax_withheld": tax,
 			"cost_sharing": cost_share,
 			"net_pay": slip.net_pay

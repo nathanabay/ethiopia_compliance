@@ -3,21 +3,62 @@ import frappe
 def run():
     print("--- 🚑 REPAIRING BROKEN CLIENT SCRIPTS ---")
 
-    # Find all the scripts we created
-    scripts = frappe.get_all("Client Script", 
-        filters={"name": ["like", "EC Sync%"]}, 
+    # Find all scripts we created (two naming patterns)
+    ec_sync_scripts = frappe.get_all("Client Script",
+        filters={"name": ["like", "EC Sync%"]},
         fields=["name", "dt"]
     )
-    
-    print(f"Found {len(scripts)} scripts to repair...")
+    calendar_sync_scripts = frappe.get_all("Client Script",
+        filters={"name": ["like", "Ethiopian Calendar Sync%"]},
+        fields=["name", "dt"]
+    )
 
-    for s in scripts:
-        doctype = s.dt  # e.g., "Quotation"
+    all_scripts = ec_sync_scripts + calendar_sync_scripts
+    print(f"Found {len(all_scripts)} scripts to repair...")
+
+    for s in all_scripts:
+        doctype = s.dt
         script_name = s.name
-        
-        # Define the logic with the specific Doctype Name injected correctly
-        # We use f-string f"'{doctype}'" to generate 'Quotation' in the JS code
-        fixed_js = f"""
+        is_simple_sync = script_name.startswith("Ethiopian Calendar Sync")
+
+        if is_simple_sync:
+            # Simple sync: posting_date <-> ethiopian_date (no picker widget)
+            fixed_js = f"""
+frappe.ui.form.on('{doctype}', {{
+    posting_date: function(frm) {{
+        if (frm.doc.posting_date) {{
+            frappe.call({{
+                method: "ethiopia_compliance.utils.get_ec_date",
+                args: {{ date: frm.doc.posting_date }},
+                callback: function(r) {{
+                    if (r.message && r.message !== frm.doc.ethiopian_date) {{
+                        frm.set_value('ethiopian_date', r.message);
+                    }}
+                }}
+            }});
+        }}
+    }},
+    ethiopian_date: function(frm) {{
+        if (frm.doc.ethiopian_date && frm.doc.ethiopian_date.length >= 8) {{
+            frappe.call({{
+                method: "ethiopia_compliance.utils.get_gc_date",
+                args: {{ ethiopian_date: frm.doc.ethiopian_date }},
+                callback: function(r) {{
+                    if (r.message) {{
+                        frm.set_value('posting_date', r.message);
+                        frappe.show_alert({{message: "Synced with Gregorian Calendar", indicator: "green"}});
+                    }} else {{
+                        frappe.msgprint("Invalid Ethiopian Date. Use DD-MM-YYYY format.");
+                    }}
+                }}
+            }});
+        }}
+    }}
+}});
+"""
+        else:
+            # Enhanced sync: full calendar picker widget with all date fields
+            fixed_js = f"""
 frappe.ui.form.on('{doctype}', {{
     refresh: function(frm) {{
         // 1. Bind the "Focus" event to trigger the selector
@@ -28,7 +69,7 @@ frappe.ui.form.on('{doctype}', {{
                 }}
             }});
         }}
-        
+
         // Auto-fill on load
         // Use different field names based on doctype
         let date_field = 'posting_date';
@@ -48,7 +89,7 @@ frappe.ui.form.on('{doctype}', {{
     attendance_date: function(frm) {{ sync_to_ethiopian(frm, 'attendance_date'); }},
     date_of_joining: function(frm) {{ sync_to_ethiopian(frm, 'date_of_joining'); }},
     date: function(frm) {{ sync_to_ethiopian(frm, 'date'); }},
-    
+
     // 3. Reverse Sync: Ethiopian -> Gregorian
     ethiopian_date: function(frm) {{
         if (frm.doc.ethiopian_date && frm.doc.ethiopian_date.length >= 8) {{
@@ -69,7 +110,7 @@ frappe.ui.form.on('{doctype}', {{
 
 function show_ethiopian_selector(frm) {{
     frm.selector_open = true;
-    
+
     let d = new frappe.ui.Dialog({{
         title: '📅 Select Ethiopian Date',
         fields: [
@@ -115,7 +156,7 @@ function show_ethiopian_selector(frm) {{
         primary_action: function(values) {{
             let day = values.day.toString().padStart(2, '0');
             let date_str = `${{day}}-${{values.month}}-${{values.year}}`;
-            
+
             frm.set_value('ethiopian_date', date_str);
             d.hide();
             frm.selector_open = false;
@@ -124,7 +165,7 @@ function show_ethiopian_selector(frm) {{
             frm.selector_open = false;
         }}
     }});
-    
+
     d.show();
 }}
 
@@ -147,7 +188,7 @@ function set_gregorian(frm, date_val) {{
     for (let f of fields) {{
         if (frm.fields_dict[f]) {{
             frm.set_value(f, date_val);
-            break; 
+            break;
         }}
     }}
     frappe.show_alert({{message: "✅ Synced to Gregorian", indicator: "green"}});
