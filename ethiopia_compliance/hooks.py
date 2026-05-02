@@ -26,6 +26,7 @@ doc_events = {
 	},
 	"Sales Invoice": {
 		"before_submit": [
+			"ethiopia_compliance.integrations.fiscal_device.register_sales_invoice",
 			"ethiopia_compliance.accounts.invoice_logic.validate_fs_number"
 		]
 	},
