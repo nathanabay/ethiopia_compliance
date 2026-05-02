@@ -16,7 +16,7 @@ def apply_withholding_tax(doc, method):
 
 	goods_threshold = settings.wht_goods_threshold or 10000
 	services_threshold = settings.wht_services_threshold or 3000
-	wht_rate = (settings.wht_rate or 2) / 100
+	wht_rate = (settings.wht_rate or 3) / 100
 
 	# 3. Determine Threshold - batch fetch item types in one query
 	current_threshold = goods_threshold
@@ -28,7 +28,14 @@ def apply_withholding_tax(doc, method):
 				current_threshold = services_threshold
 				break
 
-	# 4. Apply Tax if Grand Total exceeds threshold
+	# 4. Check for missing Supplier TIN — apply 30% penalty rate (Directive 1104/2025 Art. 8)
+	PENALTY_RATE = 0.30
+	penalty_applied = False
+	if not doc.custom_supplier_tin or str(doc.custom_supplier_tin).strip() == "":
+		wht_rate = PENALTY_RATE
+		penalty_applied = True
+
+	# 5. Apply Tax if Grand Total exceeds threshold
 	if doc.grand_total >= current_threshold:
 		wht_account = settings.wht_account
 		if not wht_account:
@@ -45,10 +52,15 @@ def apply_withholding_tax(doc, method):
 		wht_exists = any(t.account_head == wht_account for t in doc.taxes)
 
 		if not wht_exists:
+			if penalty_applied:
+				desc = _("30% Penalty WHT — Missing Supplier TIN")
+			else:
+				desc = f"{settings.wht_rate or 3}% WHT (Threshold: {current_threshold:,.0f} ETB)"
+
 			doc.append("taxes", {
 				"charge_type": "Actual",
 				"account_head": wht_account,
-				"description": f"{settings.wht_rate or 2}% WHT (Threshold: {current_threshold:,.0f} ETB)",
+				"description": desc,
 				"tax_amount": -(doc.total * wht_rate),
 				"category": "Total",
 				"add_deduct_tax": "Deduct"

@@ -3,6 +3,7 @@
 
 import frappe
 from frappe import _
+from ethiopia_compliance.utils import get_gc_date
 
 def execute(filters=None):
 	if filters is None:
@@ -25,6 +26,23 @@ def execute(filters=None):
 		frappe.throw(_("From Date filter is required."))
 	if not filters.get("to_date"):
 		frappe.throw(_("To Date filter is required."))
+
+	# Ethiopian Calendar date conversion
+	if filters.get("use_ethiopian_calendar"):
+		if filters.get("from_date"):
+			parts = str(filters["from_date"]).split("-")
+			if len(parts) == 3:
+				eth_date = f"{parts[2]}-{parts[1]}-{parts[0]}"
+				gc_date = get_gc_date(eth_date)
+				if gc_date:
+					filters["from_date"] = gc_date
+		if filters.get("to_date"):
+			parts = str(filters["to_date"]).split("-")
+			if len(parts) == 3:
+				eth_date = f"{parts[2]}-{parts[1]}-{parts[0]}"
+				gc_date = get_gc_date(eth_date)
+				if gc_date:
+					filters["to_date"] = gc_date
 
 	conditions = ["p.docstatus = 1"]
 	values = {

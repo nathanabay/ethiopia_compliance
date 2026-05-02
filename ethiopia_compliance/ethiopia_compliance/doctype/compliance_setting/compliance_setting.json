@@ -57,7 +57,7 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "2",
+   "default": "3",
    "fieldname": "wht_rate",
    "fieldtype": "Percent",
    "in_list_view": 1,

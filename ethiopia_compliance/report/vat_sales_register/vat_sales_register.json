@@ -8,7 +8,7 @@
     "filters": [],
     "is_standard": "Yes",
     "javascript": null,
-    "json": "[{\"fieldname\": \"company\", \"label\": \"Company\", \"fieldtype\": \"Link\", \"options\": \"Company\", \"reqd\": 1}, {\"fieldname\": \"from_date\", \"label\": \"From Date\", \"fieldtype\": \"Date\", \"reqd\": 1}, {\"fieldname\": \"to_date\", \"label\": \"To Date\", \"fieldtype\": \"Date\", \"reqd\": 1}]",
+    "json": "[{\"fieldname\": \"company\", \"label\": \"Company\", \"fieldtype\": \"Link\", \"options\": \"Company\", \"reqd\": 1}, {\"fieldname\": \"from_date\", \"label\": \"From Date\", \"fieldtype\": \"Date\", \"reqd\": 1}, {\"fieldname\": \"to_date\", \"label\": \"To Date\", \"fieldtype\": \"Date\", \"reqd\": 1}, {\"fieldname\": \"use_ethiopian_calendar\", \"label\": \"Use Ethiopian Calendar\", \"fieldtype\": \"Check\"}]",
     "letter_head": null,
     "module": "Ethiopia Compliance",
     "name": "VAT Sales Register",

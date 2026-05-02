@@ -32,7 +32,7 @@ def setup_compliance_settings():
         if not settings.wht_goods_threshold:
             settings.wht_goods_threshold = 10000
             settings.wht_services_threshold = 3000
-            settings.wht_rate = 2
+            settings.wht_rate = 3
             save_needed = True
         
         if not settings.vat_rate:
@@ -114,7 +114,7 @@ def setup_custom_fields():
     # D. Supplier & Multi-Doc Compliance
     if "Supplier" not in custom_fields: custom_fields["Supplier"] = []
     custom_fields["Supplier"].extend([
-        {"fieldname": "custom_wht_eligible", "label": "WHT Eligible (2%)", "fieldtype": "Check", "insert_after": "tax_id", "default": "0", "module": "Ethiopia Compliance"},
+        {"fieldname": "custom_wht_eligible", "label": "WHT Eligible (3%)", "fieldtype": "Check", "insert_after": "tax_id", "default": "0", "module": "Ethiopia Compliance"},
         {"fieldname": "custom_vat_registered", "label": "VAT Registered", "fieldtype": "Check", "insert_after": "custom_wht_eligible", "default": "1", "module": "Ethiopia Compliance"}
     ])
 
