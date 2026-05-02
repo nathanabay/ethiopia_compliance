@@ -18,18 +18,23 @@ def execute(filters=None):
 		{"fieldname": "purchase_type", "label": _("Type (Goods/Services)"), "fieldtype": "Data", "width": 150}
 	]
 
-	conditions = ["p.docstatus = 1"]
-	values = {}
+	if not filters.get("company"):
+		frappe.throw(_("Company filter is required."))
+	if not filters.get("from_date"):
+		frappe.throw(_("From Date filter is required."))
+	if not filters.get("to_date"):
+		frappe.throw(_("To Date filter is required."))
 
-	if filters.get("company"):
-		conditions.append("p.company = %(company)s")
-		values["company"] = filters["company"]
-	if filters.get("from_date"):
-		conditions.append("p.posting_date >= %(from_date)s")
-		values["from_date"] = filters["from_date"]
-	if filters.get("to_date"):
-		conditions.append("p.posting_date <= %(to_date)s")
-		values["to_date"] = filters["to_date"]
+	conditions = ["p.docstatus = 1"]
+	values = {
+		"company": filters["company"],
+		"from_date": filters["from_date"],
+		"to_date": filters["to_date"]
+	}
+
+	conditions.append("p.company = %(company)s")
+	conditions.append("p.posting_date >= %(from_date)s")
+	conditions.append("p.posting_date <= %(to_date)s")
 
 	data = frappe.db.sql("""
 		SELECT
@@ -39,9 +44,19 @@ def execute(filters=None):
 			p.bill_date as receipt_date,
 			'G' as calendar_type,
 			p.grand_total as amount,
-			CASE WHEN svc.parent IS NOT NULL THEN 'Services' ELSE 'Goods' END as purchase_type
+			CASE
+				WHEN goods.parent IS NOT NULL AND svc.parent IS NOT NULL THEN 'Mixed'
+				WHEN svc.parent IS NOT NULL THEN 'Services'
+				ELSE 'Goods'
+			END as purchase_type
 		FROM `tabPurchase Invoice` p
 		JOIN `tabCompany` c ON p.company = c.name
+		LEFT JOIN (
+			SELECT DISTINCT pii.parent
+			FROM `tabPurchase Invoice Item` pii
+			JOIN `tabItem` i ON pii.item_code = i.name
+			WHERE i.is_stock_item = 1
+		) goods ON p.name = goods.parent
 		LEFT JOIN (
 			SELECT DISTINCT pii.parent
 			FROM `tabPurchase Invoice Item` pii

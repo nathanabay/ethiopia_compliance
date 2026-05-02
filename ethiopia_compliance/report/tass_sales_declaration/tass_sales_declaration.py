@@ -12,7 +12,7 @@ def execute(filters=None):
 		{"fieldname": "seller_tin", "label": _("Seller TIN"), "fieldtype": "Data", "width": 140},
 		{"fieldname": "buyer_tin", "label": _("Buyer TIN"), "fieldtype": "Data", "width": 140},
 		{"fieldname": "buyer_name", "label": _("Buyer Name"), "fieldtype": "Data", "width": 180},
-		{"fieldname": "inv_no", "label": _("Invoice No"), "fieldtype": "Dynamic Link", "options": "doctype", "width": 160},
+		{"fieldname": "inv_no", "label": _("Invoice No"), "fieldtype": "Data", "width": 160},
 		{"fieldname": "doctype", "label": _("Type"), "fieldtype": "Data", "width": 100},
 		{"fieldname": "mrc", "label": _("MRC (Machine Code)"), "fieldtype": "Data", "width": 140},
 		{"fieldname": "fs_no", "label": _("Receipt No (FS)"), "fieldtype": "Data", "width": 120},
@@ -22,18 +22,23 @@ def execute(filters=None):
 		{"fieldname": "amount", "label": _("Grand Total"), "fieldtype": "Currency", "width": 120}
 	]
 
-	conditions = ["s.docstatus = 1"]
-	values = {}
+	if not filters.get("company"):
+		frappe.throw(_("Company filter is required."))
+	if not filters.get("from_date"):
+		frappe.throw(_("From Date filter is required."))
+	if not filters.get("to_date"):
+		frappe.throw(_("To Date filter is required."))
 
-	if filters.get("company"):
-		conditions.append("s.company = %(company)s")
-		values["company"] = filters["company"]
-	if filters.get("from_date"):
-		conditions.append("s.posting_date >= %(from_date)s")
-		values["from_date"] = filters["from_date"]
-	if filters.get("to_date"):
-		conditions.append("s.posting_date <= %(to_date)s")
-		values["to_date"] = filters["to_date"]
+	conditions = ["s.docstatus = 1"]
+	values = {
+		"company": filters["company"],
+		"from_date": filters["from_date"],
+		"to_date": filters["to_date"]
+	}
+
+	conditions.append("s.company = %(company)s")
+	conditions.append("s.posting_date >= %(from_date)s")
+	conditions.append("s.posting_date <= %(to_date)s")
 
 	data = frappe.db.sql("""
 		SELECT

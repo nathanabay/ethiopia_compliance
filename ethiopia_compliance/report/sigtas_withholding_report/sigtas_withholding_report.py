@@ -18,18 +18,23 @@ def execute(filters=None):
 		{"fieldname": "wht_amount", "label": _("Tax Withheld"), "fieldtype": "Currency", "width": 120}
 	]
 
-	conditions = ["p.docstatus = 1"]
-	values = {}
+	if not filters.get("company"):
+		frappe.throw(_("Company filter is required."))
+	if not filters.get("from_date"):
+		frappe.throw(_("From Date filter is required."))
+	if not filters.get("to_date"):
+		frappe.throw(_("To Date filter is required."))
 
-	if filters.get("company"):
-		conditions.append("p.company = %(company)s")
-		values["company"] = filters["company"]
-	if filters.get("from_date"):
-		conditions.append("p.posting_date >= %(from_date)s")
-		values["from_date"] = filters["from_date"]
-	if filters.get("to_date"):
-		conditions.append("p.posting_date <= %(to_date)s")
-		values["to_date"] = filters["to_date"]
+	conditions = ["p.docstatus = 1"]
+	values = {
+		"company": filters["company"],
+		"from_date": filters["from_date"],
+		"to_date": filters["to_date"]
+	}
+
+	conditions.append("p.company = %(company)s")
+	conditions.append("p.posting_date >= %(from_date)s")
+	conditions.append("p.posting_date <= %(to_date)s")
 
 	data = frappe.db.sql("""
 		SELECT

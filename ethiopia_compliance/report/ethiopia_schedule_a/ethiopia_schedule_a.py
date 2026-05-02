@@ -30,18 +30,23 @@ def execute(filters=None):
 		{"fieldname": "net_pay", "label": _("Net Pay"), "fieldtype": "Currency", "width": 120}
 	]
 
-	conditions = ["docstatus = 1"]
-	values = {}
+	if not filters.get("company"):
+		frappe.throw(_("Company filter is required."))
+	if not filters.get("from_date"):
+		frappe.throw(_("From Date filter is required."))
+	if not filters.get("to_date"):
+		frappe.throw(_("To Date filter is required."))
 
-	if filters.get("company"):
-		conditions.append("company = %(company)s")
-		values["company"] = filters["company"]
-	if filters.get("from_date"):
-		conditions.append("start_date >= %(from_date)s")
-		values["from_date"] = filters["from_date"]
-	if filters.get("to_date"):
-		conditions.append("end_date <= %(to_date)s")
-		values["to_date"] = filters["to_date"]
+	conditions = ["docstatus = 1"]
+	values = {
+		"company": filters["company"],
+		"from_date": filters["from_date"],
+		"to_date": filters["to_date"]
+	}
+
+	conditions.append("company = %(company)s")
+	conditions.append("start_date >= %(from_date)s")
+	conditions.append("end_date <= %(to_date)s")
 
 	# Single query for salary slips
 	slips = frappe.db.sql("""
