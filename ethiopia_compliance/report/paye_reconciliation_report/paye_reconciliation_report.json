@@ -1,0 +1,34 @@
+{
+    "add_total_row": 1,
+    "add_translate_data": 0,
+    "columns": [],
+    "disabled": 0,
+    "docstatus": 0,
+    "doctype": "Report",
+    "filters": [],
+    "is_standard": "Yes",
+    "javascript": null,
+    "json": "[{\"fieldname\": \"company\", \"label\": \"Company\", \"fieldtype\": \"Link\", \"options\": \"Company\", \"reqd\": 1}, {\"fieldname\": \"month\", \"label\": \"Month\", \"fieldtype\": \"Select\", \"options\": \"\\nJanuary\\nFebruary\\nMarch\\nApril\\nMay\\nJune\\nJuly\\nAugust\\nSeptember\\nOctober\\nNovember\\nDecember\", \"default\": \"January\", \"reqd\": 1}, {\"fieldname\": \"year\", \"label\": \"Year\", \"fieldtype\": \"Select\", \"options\": \"2024\\n2025\\n2026\\n2027\\n2028\\n2029\", \"default\": \"2026\", \"reqd\": 1}]",
+    "letter_head": null,
+    "module": "Ethiopia Compliance",
+    "name": "PAYE Reconciliation Report",
+    "prepared_report": 0,
+    "query": null,
+    "ref_doctype": "Salary Slip",
+    "reference_report": null,
+    "report_name": "PAYE Reconciliation Report",
+    "report_script": null,
+    "report_type": "Script Report",
+    "roles": [
+        {
+            "role": "HR Manager"
+        },
+        {
+            "role": "Accounts Manager"
+        },
+        {
+            "role": "HR User"
+        }
+    ],
+    "timeout": 0
+}

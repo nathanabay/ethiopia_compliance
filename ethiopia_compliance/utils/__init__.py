@@ -17,6 +17,7 @@ __all__ = [
 	'get_ec_date',
 	'get_gc_date',
 	'get_calendar_settings',
+	'compute_paye_tax',
 	'validate_tin',
 	'validate_individual_tin',
 	'validate_company_tin',
@@ -114,3 +115,48 @@ def get_calendar_settings() -> dict:
 		}
 	except Exception:
 		return {"enable_ethiopian_calendar": 1}
+
+
+# --- PAYE COMPUTATION ---
+
+def compute_paye_tax(taxable_income):
+	"""
+	Compute Ethiopian PAYE (Pay As You Earn) income tax per Proclamation No. 1395/2025.
+
+	Brackets (effective July 2025):
+		0 - 2,000:     0%
+		2,001 - 4,000:  15%  (cumulative: 300)
+		4,001 - 7,000:  20%  (cumulative: 900)
+		7,001 - 10,000: 25%  (cumulative: 1,650)
+		10,001 - 14,000: 30%  (cumulative: 2,850)
+		Over 14,000:    35%
+
+	Args:
+		taxable_income (float): Monthly taxable income (gross pay - employee pension)
+
+	Returns:
+		float: Computed PAYE tax amount
+	"""
+	from frappe.utils import flt
+
+	taxable = flt(taxable_income)
+
+	if taxable <= 0:
+		return 0.0
+
+	brackets = [
+		(2000, 0.00, 0),
+		(4000, 0.15, 0),
+		(7000, 0.20, 300),
+		(10000, 0.25, 900),
+		(14000, 0.30, 1650),
+	]
+
+	prev_upper = 0
+	for limit, rate, cumulative in brackets:
+		if taxable <= limit:
+			return flt(cumulative + (taxable - prev_upper) * rate, 2)
+		prev_upper = limit
+
+	# Top bracket: over 14,000 at 35%
+	return flt(2850 + (taxable - 14000) * 0.35, 2)
