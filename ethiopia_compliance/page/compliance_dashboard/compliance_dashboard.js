@@ -163,6 +163,19 @@ class ComplianceDashboard {
                     </div>
                 </div>
 
+                <div class="row" style="margin-bottom: 20px;">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Tax Calendar & Alerts</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="tax-calendar-widget">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row">
                     <div class="col-md-12">
                         <div class="card">
@@ -263,8 +276,75 @@ class ComplianceDashboard {
         // Compliance Status
         this.render_compliance_status(data.compliance_status);
 
+        // Tax Calendar & Alerts
+        this.render_tax_calendar(data.tax_calendar);
+
         // Recent Documents
         this.render_recent_documents(data.recent_documents);
+    }
+
+    render_tax_calendar(calendar) {
+        if (!calendar || calendar.length === 0) {
+            this.parent.find('#tax-calendar-widget').html(
+                '<p class="text-muted">' + __('No upcoming deadlines') + '</p>'
+            );
+            return;
+        }
+
+        let urgency_cfg = {
+            'overdue':  { color: '#dc3545', bg: '#fff5f5', border: '#dc3545', icon: '&#9888;' },
+            'due_soon': { color: '#e67e00', bg: '#fff8f0', border: '#e67e00', icon: '&#9200;' },
+            'upcoming': { color: '#1e6fde', bg: '#f0f7ff', border: '#1e6fde', icon: '&#128197;' },
+            'future':   { color: '#28a745', bg: '#f0fff4', border: '#28a745', icon: '&#10003;' }
+        };
+
+        let html = '<div style="display: flex; flex-wrap: wrap; gap: 12px;">';
+
+        calendar.forEach(function (d) {
+            let cfg = urgency_cfg[d.urgency] || urgency_cfg['future'];
+            let days = d.days_remaining;
+            let status_text;
+            if (days < 0) {
+                status_text = __('OVERDUE — {0} days ago').format([Math.abs(days)]);
+            } else if (days === 0) {
+                status_text = __('DUE TODAY');
+            } else {
+                status_text = __('Due in {0} days').format([days]);
+            }
+
+            html += `
+                <div style="
+                    flex: 1 1 220px; min-width: 200px;
+                    border-left: 4px solid ${cfg.border};
+                    background: ${cfg.bg};
+                    padding: 12px 14px;
+                    border-radius: 4px;
+                    font-size: 13px;
+                ">
+                    <div style="font-weight: 600; color: #333; margin-bottom: 4px;">
+                        ${frappe.utils.escape_html(d.label)}
+                    </div>
+                    <div style="color: #666; margin-bottom: 4px;">
+                        ${frappe.datetime.str_to_user(d.due_date)}
+                    </div>
+                    <div style="color: ${cfg.color}; font-weight: 600;">
+                        ${cfg.icon} ${status_text}
+                    </div>
+                </div>`;
+        });
+
+        html += '</div>';
+
+        // Legend
+        html += `
+            <div style="margin-top: 14px; display: flex; gap: 16px; font-size: 12px; color: #666;">
+                <span><span style="background:#dc3545;color:#fff;padding:1px 6px;border-radius:3px;">${__('Overdue')}</span></span>
+                <span><span style="background:#e67e00;color:#fff;padding:1px 6px;border-radius:3px;">${__('Due in 5 days')}</span></span>
+                <span><span style="background:#1e6fde;color:#fff;padding:1px 6px;border-radius:3px;">${__('Due in 14 days')}</span></span>
+                <span><span style="background:#28a745;color:#fff;padding:1px 6px;border-radius:3px;">${__('Compliant')}</span></span>
+            </div>`;
+
+        this.parent.find('#tax-calendar-widget').html(html);
     }
 
     render_compliance_status(status) {

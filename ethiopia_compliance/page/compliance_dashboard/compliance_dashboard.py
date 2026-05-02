@@ -4,6 +4,7 @@ from frappe import _
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from ethiopia_compliance.utils import get_ec_date
+from ethiopia_compliance.tasks.compliance_alerts import get_tax_calendar
 
 
 def _get_date_range(period, from_date=None, to_date=None):
@@ -79,6 +80,7 @@ def get_dashboard_data(period='this_month', from_date=None, to_date=None) -> dic
 		'gregorian_date': today_date,
 		'recent_documents': get_recent_documents(company, month_start, month_end),
 		'compliance_status': get_compliance_status(company),
+		'tax_calendar': get_tax_calendar(),
 		'month_start': month_start,
 		'month_end': month_end,
 		'period_label': _(period_label),

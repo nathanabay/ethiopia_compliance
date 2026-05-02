@@ -55,6 +55,10 @@ doc_events = {
 scheduler_events = {
 	"daily": [
 		"ethiopia_compliance.overrides.leave_allocation.run_daily_leave_update",
+		"ethiopia_compliance.tasks.compliance_alerts.check_overdue_pension",
+	],
+	"weekly": [
+		"ethiopia_compliance.tasks.compliance_alerts.send_tax_deadline_digest",
 	]
 }
 
