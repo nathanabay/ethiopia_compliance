@@ -1,0 +1,192 @@
+{
+    "actions": [],
+    "autoname": "format:POC-{YYYY}-{#####}",
+    "creation": "2026-05-04 00:00:00.000000",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "project",
+        "contract_value",
+        "company",
+        "column_break_period",
+        "period_from",
+        "period_to",
+        "fiscal_year",
+        "section_break_costs",
+        "estimated_total_cost",
+        "cumulative_costs_to_date",
+        "column_break_costs",
+        "prior_revenue_recognized",
+        "cumulative_revenue_recognized",
+        "section_break_poc",
+        "poc_percentage",
+        "taxable_revenue_period",
+        "section_break_notes",
+        "notes"
+    ],
+    "fields": [
+        {
+            "fieldname": "project",
+            "fieldtype": "Link",
+            "label": "Project",
+            "options": "Project",
+            "reqd": 1
+        },
+        {
+            "fieldname": "contract_value",
+            "fieldtype": "Currency",
+            "label": "Total Contract Value (ETB)",
+            "non_negative": 1,
+            "reqd": 1
+        },
+        {
+            "fieldname": "company",
+            "fieldtype": "Link",
+            "label": "Company",
+            "options": "Company",
+            "reqd": 1
+        },
+        {
+            "fieldname": "column_break_period",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "period_from",
+            "fieldtype": "Date",
+            "label": "Period From",
+            "reqd": 1
+        },
+        {
+            "fieldname": "period_to",
+            "fieldtype": "Date",
+            "label": "Period To",
+            "reqd": 1
+        },
+        {
+            "fieldname": "fiscal_year",
+            "fieldtype": "Link",
+            "label": "Fiscal Year",
+            "options": "Fiscal Year"
+        },
+        {
+            "fieldname": "section_break_costs",
+            "fieldtype": "Section Break",
+            "label": "Cost & Revenue Calculation"
+        },
+        {
+            "description": "Total estimated project cost for PoC denominator",
+            "fieldname": "estimated_total_cost",
+            "fieldtype": "Currency",
+            "label": "Estimated Total Cost (ETB)",
+            "non_negative": 1,
+            "reqd": 1
+        },
+        {
+            "description": "Auto-populated from GL — click Fetch from GL to update",
+            "fieldname": "cumulative_costs_to_date",
+            "fieldtype": "Currency",
+            "label": "Cumulative Costs to Date (ETB)",
+            "non_negative": 1
+        },
+        {
+            "fieldname": "column_break_costs",
+            "fieldtype": "Column Break"
+        },
+        {
+            "description": "Revenue already recognized in prior periods (from previous PoC records)",
+            "fieldname": "prior_revenue_recognized",
+            "fieldtype": "Currency",
+            "label": "Prior Revenue Recognized (ETB)",
+            "read_only": 1
+        },
+        {
+            "description": "Contract Value × PoC % — total revenue recognized to date",
+            "fieldname": "cumulative_revenue_recognized",
+            "fieldtype": "Currency",
+            "label": "Cumulative Revenue Recognized (ETB)",
+            "read_only": 1
+        },
+        {
+            "fieldname": "section_break_poc",
+            "fieldtype": "Section Break",
+            "label": "Percentage of Completion"
+        },
+        {
+            "description": "PoC % = Cumulative Costs / Estimated Total Cost × 100",
+            "fieldname": "poc_percentage",
+            "fieldtype": "Float",
+            "label": "PoC Percentage (%)",
+            "precision": 6,
+            "read_only": 1
+        },
+        {
+            "description": "Taxable revenue for this period = Current Cumulative − Prior Cumulative",
+            "fieldname": "taxable_revenue_period",
+            "fieldtype": "Currency",
+            "label": "Taxable Revenue This Period (ETB)",
+            "read_only": 1
+        },
+        {
+            "fieldname": "section_break_notes",
+            "fieldtype": "Section Break",
+            "label": "Notes"
+        },
+        {
+            "fieldname": "notes",
+            "fieldtype": "Small Text",
+            "label": "Notes / Methodology"
+        }
+    ],
+    "index_web_pages_for_search": 1,
+    "is_submittable": 1,
+    "links": [
+        {
+            "creation": "2026-05-04 00:00:00.000000",
+            "doctype": "Project",
+            "fieldname": "project",
+            "link_doctype": "Project",
+            "link_fieldname": "name",
+            "parentfield": "links"
+        }
+    ],
+    "modified": "2026-05-04 00:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Ethiopia Compliance",
+    "name": "Tax Percentage of Completion",
+    "naming_rule": "Expression",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "import": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "submit": 1,
+            "write": 1
+        },
+        {
+            "create": 1,
+            "delete": 0,
+            "email": 1,
+            "export": 1,
+            "import": 0,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Accounts Manager",
+            "share": 0,
+            "submit": 1,
+            "write": 1
+        }
+    ],
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": [],
+    "track_changes": 1
+}

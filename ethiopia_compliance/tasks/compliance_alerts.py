@@ -4,7 +4,6 @@
 import frappe
 from frappe import _
 from frappe.utils import flt, getdate, today, add_days, date_diff, nowdate, format_date
-from frappe.utils import add_months as add_months_util
 from datetime import date, timedelta
 import calendar
 
@@ -414,3 +413,247 @@ def get_tax_calendar():
 	"""Return upcoming deadlines with urgency — used by dashboard widget."""
 	_today = getdate(today())
 	return _compute_upcoming_deadlines(_today)
+
+
+# ──────────────────────────────────────────
+# Phase 1.7 — Monthly 25th CFO Deadline Reminder
+# ──────────────────────────────────────────
+
+def send_monthly_deadline_reminder():
+	"""Monthly cron (25th): Email CFO a reminder that VAT, WHT, and Pension
+    deadlines are due on the 30th.
+
+	Hooked to scheduler_events.monthly via hooks.py.
+	"""
+	try:
+		_today = getdate(today())
+		company = frappe.defaults.get_user_default("Company") or _("All Companies")
+
+		# Deadlines due in 5 days (on the 30th)
+		deadlines_due = [
+			{
+				"label": _("VAT Return"),
+				"due_day": 30,
+				"description": _("VAT return for the previous month is due on the 30th.")
+			},
+			{
+				"label": _("WHT Certificate Submission"),
+				"due_day": 15,
+				"description": _("WHT certificates for the previous month must be filed by the 15th.")
+			},
+			{
+				"label": _("PAYE / Employment Tax"),
+				"due_day": 30,
+				"description": _("PAYE declarations and payments are due on the 30th.")
+			},
+			{
+				"label": _("POESSA Pension Remittance"),
+				"due_day": 30,
+				"description": _("Employee + Employer pension contributions are due within 30 days of month-end.")
+			},
+		]
+
+		html = _build_monthly_reminder_email(company, deadlines_due, _today)
+		subject = _("Monthly Tax Compliance Reminder — {0}").format(
+			format_date(_today, "MMMM YYYY")
+		)
+
+		# Try CFO email from Compliance Setting first
+		try:
+			settings = frappe.get_cached_doc("Compliance Setting")
+			cfo_email = settings.cfo_email
+		except Exception:
+			cfo_email = None
+
+		if cfo_email:
+			frappe.sendmail(
+				recipients=[cfo_email],
+				subject=subject,
+				message=html
+			)
+		else:
+			# Fallback: notify all Accounts Managers
+			notify_users_with_role("Accounts Manager", subject, html)
+
+	except Exception:
+		frappe.log_error(title="send_monthly_deadline_reminder failed")
+		_critical_alert_email(
+			subject="CRITICAL: send_monthly_deadline_reminder failed",
+			body=f"<pre>{frappe.get_traceback()}</pre>"
+		)
+
+
+def _build_monthly_reminder_email(company, deadlines, today_date):
+	"""Build the monthly CFO reminder HTML email."""
+	rows = ""
+	for d in deadlines:
+		rows += f"""
+			<tr>
+				<td style="padding: 10px; border: 1px solid #eee; font-weight: bold;">{d['label']}</td>
+				<td style="padding: 10px; border: 1px solid #eee;">{d['description']}</td>
+			</tr>"""
+
+	return f"""
+		<h2>Monthly Tax Compliance Reminder</h2>
+		<p><strong>Company:</strong> {company}</p>
+		<p><strong>Date:</strong> {format_date(today_date)}</p>
+		<p>Please be reminded of the following compliance deadlines coming up:</p>
+
+		<table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+			<thead>
+				<tr style="background-color: #2c3e50; color: white;">
+					<th style="padding: 10px; text-align: left;">Obligation</th>
+					<th style="padding: 10px; text-align: left;">Details</th>
+				</tr>
+			</thead>
+			<tbody>
+				{rows}
+			</tbody>
+		</table>
+
+		<p style="margin-top: 20px; color: #e74c3c; font-weight: bold;">
+			All deadlines are per the Ethiopian Federal Income Tax Proclamation
+			No. 979/2016 and the Income Tax Amendment Proclamation No. 1395/2017.
+		</p>
+
+		<hr>
+		<p style="color: #666; font-size: 12px;">
+			This is an automated reminder from Ethiopia Compliance.<br>
+			Please ensure all returns and payments are submitted on time to avoid penalties.
+		</p>
+	"""
+
+
+# ──────────────────────────────────────────
+# Phase 1.7 — End-of-Month Unremitted Pension Alert to HR
+# ──────────────────────────────────────────
+
+def check_unremitted_pension_end_of_month():
+	"""End-of-month scheduled task: if unremitted pension deductions exist
+    in Salary Slips without linked Payment Entries, email HR.
+
+	Must run on the last day of the month (or first day of the next month).
+	Compares POESSA pension liabilities against actual remittances.
+	Hooked to scheduler_events.monthly (or called by a monthly cron).
+	"""
+	try:
+		_today = getdate(today())
+		company = frappe.defaults.get_user_default("Company")
+		if not company:
+			return
+
+		# Get last month
+		from dateutil.relativedelta import relativedelta
+		last_month_end = (_today.replace(day=1) - relativedelta(days=1))
+		last_month_start = last_month_end.replace(day=1)
+
+		# Aggregate pension from salary slips for last month
+		pension_liability = _get_monthly_pension_liability(
+			company,
+			last_month_start.strftime("%Y-%m-%d"),
+			last_month_end.strftime("%Y-%m-%d")
+		)
+
+		if not pension_liability:
+			return
+
+		liability = list(pension_liability.values())[0] if pension_liability else {}
+		total_due = (liability.get("emp_pension") or 0) + (liability.get("org_pension") or 0)
+
+		# Get remittances for last month
+		remittance = _get_monthly_pension_remittances(
+			company,
+			last_month_start.strftime("%Y-%m-%d")
+		)
+		total_remitted = remittance.get("amount", 0)
+
+		outstanding = flt(total_due - total_remitted, 2)
+
+		if outstanding <= 1.0:
+			return  # All settled
+
+		# Email HR
+		_build_and_send_pension_unremitted_alert(
+			company=company,
+			month=last_month_end.strftime("%B %Y"),
+			total_due=total_due,
+			total_remitted=total_remitted,
+			outstanding=outstanding
+		)
+
+	except Exception:
+		frappe.log_error(title="check_unremitted_pension_end_of_month failed")
+		_critical_alert_email(
+			subject="CRITICAL: check_unremitted_pension_end_of_month failed",
+			body=f"<pre>{frappe.get_traceback()}</pre>"
+		)
+
+
+def _build_and_send_pension_unremitted_alert(company, month, total_due, total_remitted, outstanding):
+	"""Build and send the unremitted pension alert email to HR."""
+	try:
+		settings = frappe.get_cached_doc("Compliance Setting")
+		hr_email = settings.hr_email
+	except Exception:
+		hr_email = None
+
+	if not hr_email:
+		# Fallback: notify HR role
+		users = frappe.db.get_all(
+			"Has Role",
+			filters={"role": "HR Manager", "parenttype": "User"},
+			fields=["parent"]
+		)
+		for u in users:
+			try:
+				frappe.sendmail(
+					recipients=[u.parent],
+					subject=_("POESSA Pension Unremitted — Action Required"),
+					message=_pension_unremitted_html(company, month, total_due, total_remitted, outstanding)
+				)
+			except Exception:
+				pass
+		return
+
+	frappe.sendmail(
+		recipients=[hr_email],
+		subject=_("POESSA Pension Unremitted — Action Required — {0}").format(month),
+		message=_pension_unremitted_html(company, month, total_due, total_remitted, outstanding)
+	)
+
+
+def _pension_unremitted_html(company, month, total_due, total_remitted, outstanding):
+	return f"""
+		<h2>POESSA Pension Remittance — Unremitted Deductions</h2>
+		<p><strong>Company:</strong> {company}</p>
+		<p><strong>Payroll Month:</strong> {month}</p>
+
+		<table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+			<tr style="background-color: #f5f5f5;">
+				<td style="padding: 10px; border: 1px solid #eee; font-weight: bold;">Total Pension Due</td>
+				<td style="padding: 10px; border: 1px solid #eee; text-align: right;">{total_due:,.2f} ETB</td>
+			</tr>
+			<tr>
+				<td style="padding: 10px; border: 1px solid #eee; font-weight: bold;">Total Remitted</td>
+				<td style="padding: 10px; border: 1px solid #eee; text-align: right;">{total_remitted:,.2f} ETB</td>
+			</tr>
+			<tr style="background-color: #fdecea;">
+				<td style="padding: 10px; border: 1px solid #eee; font-weight: bold; color: #c0392b;">Outstanding</td>
+				<td style="padding: 10px; border: 1px solid #eee; text-align: right; color: #c0392b; font-weight: bold;">{outstanding:,.2f} ETB</td>
+			</tr>
+		</table>
+
+		<p style="margin-top: 20px; color: #e74c3c; font-weight: bold;">
+			WARNING: Under POESSA regulations, pension contributions must be remitted
+			within 30 days of the month-end. Failure to remit may result in penalties
+			and direct bank debit by the pension authority.
+		</p>
+		<p>Please process the outstanding payment immediately and ensure Payment Entries
+		are created and matched to the relevant Salary Slips.</p>
+
+		<hr>
+		<p style="color: #666; font-size: 12px;">
+			Automated by Ethiopia Compliance system.<br>
+			Proclamation No. 979/2016 (POESSA regulations).
+		</p>
+	"""

@@ -1,0 +1,92 @@
+{
+    "creation": "2026-05-04 00:00:00.000000",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "depreciation_year",
+        "fiscal_year",
+        "opening_wdv",
+        "depreciation_rate",
+        "depreciation_amount",
+        "accumulated_depreciation",
+        "closing_wdv",
+        "depreciation_method"
+    ],
+    "fields": [
+        {
+            "fieldname": "depreciation_year",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Year",
+            "read_only": 1,
+            "width": "120"
+        },
+        {
+            "fieldname": "fiscal_year",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Fiscal Year",
+            "read_only": 1,
+            "width": "100"
+        },
+        {
+            "fieldname": "opening_wdv",
+            "fieldtype": "Currency",
+            "in_list_view": 1,
+            "label": "Opening WDV (ETB)",
+            "read_only": 1,
+            "width": "140"
+        },
+        {
+            "fieldname": "depreciation_rate",
+            "fieldtype": "Float",
+            "in_list_view": 1,
+            "label": "Rate (%)",
+            "read_only": 1,
+            "width": "80"
+        },
+        {
+            "fieldname": "depreciation_amount",
+            "fieldtype": "Currency",
+            "in_list_view": 1,
+            "label": "Depreciation (ETB)",
+            "read_only": 1,
+            "width": "140"
+        },
+        {
+            "fieldname": "accumulated_depreciation",
+            "fieldtype": "Currency",
+            "in_list_view": 1,
+            "label": "Accumulated (ETB)",
+            "read_only": 1,
+            "width": "140"
+        },
+        {
+            "fieldname": "closing_wdv",
+            "fieldtype": "Currency",
+            "in_list_view": 1,
+            "label": "Closing WDV (ETB)",
+            "read_only": 1,
+            "width": "140"
+        },
+        {
+            "fieldname": "depreciation_method",
+            "fieldtype": "Data",
+            "label": "Method",
+            "read_only": 1,
+            "width": "120"
+        }
+    ],
+    "idx": 0,
+    "istable": 1,
+    "modified": "2026-05-04 00:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Ethiopia Compliance",
+    "name": "Tax Depreciation Detail",
+    "owner": "Administrator",
+    "permissions": [],
+    "sort_field": "idx",
+    "sort_order": "ASC",
+    "track_changes": 1
+}

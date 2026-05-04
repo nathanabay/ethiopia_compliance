@@ -1,0 +1,177 @@
+{
+    "actions": [],
+    "autoname": "hash",
+    "creation": "2026-05-04 00:00:00.000000",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "event_type",
+        "entity_type",
+        "entity_name",
+        "tin_number",
+        "column_break_validation",
+        "validation_result",
+        "section_break_override",
+        "override_performed",
+        "override_by",
+        "override_reason",
+        "section_break_tax",
+        "reference_doctype",
+        "reference_name",
+        "tax_rate",
+        "tax_amount",
+        "section_break_meta",
+        "user",
+        "log_timestamp",
+        "notes"
+    ],
+    "fields": [
+        {
+            "fieldname": "event_type",
+            "fieldtype": "Select",
+            "label": "Event Type",
+            "options": "TIN Validation\nWHT Applied\nCash Transaction Blocked\nManual Override\nMAT Applied\nSchedule A Computed",
+            "reqd": 1
+        },
+        {
+            "fieldname": "entity_type",
+            "fieldtype": "Select",
+            "label": "Entity Type",
+            "options": "Supplier\nCustomer\nEmployee\nCompany\nPayment Entry\nJournal Entry",
+            "reqd": 1
+        },
+        {
+            "fieldname": "entity_name",
+            "fieldtype": "Data",
+            "label": "Entity Name",
+            "reqd": 1
+        },
+        {
+            "fieldname": "tin_number",
+            "fieldtype": "Data",
+            "label": "TIN Number"
+        },
+        {
+            "fieldname": "column_break_validation",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "validation_result",
+            "fieldtype": "Small Text",
+            "label": "Validation Result"
+        },
+        {
+            "fieldname": "section_break_override",
+            "fieldtype": "Section Break",
+            "label": "Manual Override Details"
+        },
+        {
+            "default": "0",
+            "fieldname": "override_performed",
+            "fieldtype": "Check",
+            "label": "Override Performed"
+        },
+        {
+            "fieldname": "override_by",
+            "fieldtype": "Link",
+            "label": "Override By",
+            "options": "User"
+        },
+        {
+            "fieldname": "override_reason",
+            "fieldtype": "Small Text",
+            "label": "Override Reason"
+        },
+        {
+            "fieldname": "section_break_tax",
+            "fieldtype": "Section Break",
+            "label": "Tax / Financial Details"
+        },
+        {
+            "fieldname": "reference_doctype",
+            "fieldtype": "Link",
+            "label": "Reference DocType",
+            "options": "DocType"
+        },
+        {
+            "fieldname": "reference_name",
+            "fieldtype": "Dynamic Link",
+            "label": "Reference Name",
+            "options": "reference_doctype"
+        },
+        {
+            "fieldname": "tax_rate",
+            "fieldtype": "Float",
+            "label": "Tax Rate (%)"
+        },
+        {
+            "fieldname": "tax_amount",
+            "fieldtype": "Currency",
+            "label": "Tax / Transaction Amount (ETB)"
+        },
+        {
+            "fieldname": "section_break_meta",
+            "fieldtype": "Section Break",
+            "label": "Metadata"
+        },
+        {
+            "fieldname": "user",
+            "fieldtype": "Link",
+            "label": "Performed By",
+            "options": "User",
+            "read_only": 1
+        },
+        {
+            "fieldname": "log_timestamp",
+            "fieldtype": "Datetime",
+            "label": "Timestamp",
+            "read_only": 1
+        },
+        {
+            "fieldname": "notes",
+            "fieldtype": "Small Text",
+            "label": "Notes"
+        }
+    ],
+    "index_web_pages_for_search": 1,
+    "is_submittable": 0,
+    "links": [],
+    "modified": "2026-05-04 00:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Ethiopia Compliance",
+    "name": "Compliance Audit Log",
+    "naming_rule": "Hash",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "import": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        },
+        {
+            "create": 1,
+            "delete": 0,
+            "email": 0,
+            "export": 1,
+            "import": 0,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Accounts Manager",
+            "share": 0,
+            "write": 0
+        }
+    ],
+    "sort_field": "log_timestamp",
+    "sort_order": "DESC",
+    "states": [],
+    "track_changes": 1
+}

@@ -27,11 +27,13 @@ class TestDashboardStats(FrappeTestCase):
             self.assertGreaterEqual(value, 0, f"{key} should be non-negative")
 
     def test_get_overview_stats_handles_missing_company(self):
-        """Test that missing company returns zero counts."""
-        with mock.patch("frappe.db.count") as mock_count:
-            result = get_overview_stats("NonExistent Company")
+        """Test that missing company (None) returns zero counts."""
+        with mock.patch("frappe.defaults.get_user_default") as mock_defaults:
+            mock_defaults.return_value = None
+            with mock.patch("frappe.db.count") as mock_count:
+                result = get_overview_stats()
 
-        # Without a valid company, should return zeros
+        # When no company is set in defaults, should return zeros
         expected = {
             'total_companies': 0,
             'fiscal_devices': 0,

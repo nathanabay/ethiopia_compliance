@@ -1,0 +1,165 @@
+{
+    "actions": [],
+    "autoname": "field:asset_name",
+    "creation": "2026-05-04 00:00:00.000000",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "asset_name",
+        "asset_category",
+        "company",
+        "column_break_details",
+        "total_cost",
+        "initial_allowance_rate",
+        "depreciation_method",
+        "useful_life_years",
+        "section_break_schedule",
+        "tax_depreciation_schedule",
+        "section_break_summary",
+        "total_tax_depreciation",
+        "tax_wdv",
+        "notes"
+    ],
+    "fields": [
+        {
+            "fieldname": "asset_name",
+            "fieldtype": "Data",
+            "label": "Asset Pool Name",
+            "reqd": 1,
+            "unique": 1
+        },
+        {
+            "fieldname": "asset_category",
+            "fieldtype": "Select",
+            "label": "Asset Category",
+            "options": "Buildings\nMachinery\nEquipment\nMotor Vehicles\nOffice Equipment\nComputer Hardware\nIntangible Assets",
+            "reqd": 1
+        },
+        {
+            "fieldname": "company",
+            "fieldtype": "Link",
+            "label": "Company",
+            "options": "Company",
+            "reqd": 1
+        },
+        {
+            "fieldname": "column_break_details",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "total_cost",
+            "fieldtype": "Currency",
+            "label": "Total Pool Cost (ETB)",
+            "non_negative": 1,
+            "reqd": 1
+        },
+        {
+            "default": "0",
+            "description": "One-time deduction on acquisition per Ethiopian tax law. Buildings: 25%, Machinery: 50%, others: 0%",
+            "fieldname": "initial_allowance_rate",
+            "fieldtype": "Float",
+            "label": "Initial Allowance Rate (%)",
+            "precision": 2
+        },
+        {
+            "fieldname": "depreciation_method",
+            "fieldtype": "Select",
+            "label": "Tax Depreciation Method",
+            "options": "Declining Balance\nStraight Line\nSum of Digits",
+            "read_only": 1
+        },
+        {
+            "fieldname": "useful_life_years",
+            "fieldtype": "Int",
+            "label": "Useful Life (Years)",
+            "read_only": 1
+        },
+        {
+            "fieldname": "section_break_schedule",
+            "fieldtype": "Section Break",
+            "label": "Tax Depreciation Schedule (Ethiopian Law)"
+        },
+        {
+            "fieldname": "tax_depreciation_schedule",
+            "fieldtype": "Table",
+            "label": "Depreciation Schedule",
+            "options": "Tax Depreciation Detail",
+            "read_only": 1
+        },
+        {
+            "fieldname": "section_break_summary",
+            "fieldtype": "Section Break",
+            "label": "Summary"
+        },
+        {
+            "fieldname": "total_tax_depreciation",
+            "fieldtype": "Currency",
+            "label": "Total Tax Depreciation (ETB)",
+            "read_only": 1
+        },
+        {
+            "fieldname": "tax_wdv",
+            "fieldtype": "Currency",
+            "label": "Tax Written Down Value (ETB)",
+            "read_only": 1
+        },
+        {
+            "fieldname": "notes",
+            "fieldtype": "Small Text",
+            "label": "Notes"
+        }
+    ],
+    "index_web_pages_for_search": 1,
+    "is_submittable": 1,
+    "links": [
+        {
+            "creation": "2026-05-04 00:00:00.000000",
+            "doctype": "Tax Depreciation Detail",
+            "fieldname": "tax_depreciation_schedule",
+            "link_doctype": "Asset",
+            "link_fieldname": "tax_asset_pool",
+            "parentfield": "links",
+            "table_fieldname": "tax_depreciation_schedule"
+        }
+    ],
+    "modified": "2026-05-04 00:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Ethiopia Compliance",
+    "name": "Tax Asset Pool",
+    "naming_rule": "By fieldname",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "import": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "submit": 1,
+            "write": 1
+        },
+        {
+            "create": 1,
+            "delete": 0,
+            "email": 1,
+            "export": 1,
+            "import": 0,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Accounts Manager",
+            "share": 0,
+            "submit": 1,
+            "write": 1
+        }
+    ],
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": [],
+    "track_changes": 1
+}

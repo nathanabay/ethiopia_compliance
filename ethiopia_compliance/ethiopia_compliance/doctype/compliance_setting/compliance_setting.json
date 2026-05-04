@@ -1,0 +1,168 @@
+{
+    "actions": [],
+    "autoname": "field:company",
+    "creation": "2026-02-01 09:00:00.000000",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "section_break_cash",
+        "cash_limit",
+        "section_break_wht",
+        "wht_rate",
+        "wht_goods_threshold",
+        "wht_services_threshold",
+        "punitive_wht_rate",
+        "wht_account",
+        "section_break_mat",
+        "mat_rate",
+        "section_break_poessa",
+        "poessa_account",
+        "pension_remittance_days",
+        "section_break_email",
+        "cfo_email",
+        "hr_email"
+    ],
+    "fields": [
+        {
+            "fieldname": "section_break_cash",
+            "fieldtype": "Section Break",
+            "label": "Cash Transaction Limits (Proclamation No. 1395/2017 Art. 29)"
+        },
+        {
+            "default": "50000",
+            "description": "Maximum cash amount per transaction / daily aggregate to same person in ETB. Default: 50,000",
+            "fieldname": "cash_limit",
+            "fieldtype": "Currency",
+            "label": "Cash Transaction Limit (ETB)",
+            "non_negative": 1,
+            "reqd": 1
+        },
+        {
+            "fieldname": "section_break_wht",
+            "fieldtype": "Section Break",
+            "label": "Withholding Tax (WHT) — Proclamation No. 979/2016 Art. 97"
+        },
+        {
+            "default": "3",
+            "description": "Standard domestic WHT rate. Default: 3%",
+            "fieldname": "wht_rate",
+            "fieldtype": "Percent",
+            "label": "WHT Rate (%)",
+            "non_negative": 1,
+            "reqd": 1
+        },
+        {
+            "default": "20000",
+            "description": "Transaction threshold above which WHT applies to goods. Default: 20,000 ETB",
+            "fieldname": "wht_goods_threshold",
+            "fieldtype": "Currency",
+            "label": "WHT Goods Threshold (ETB)",
+            "non_negative": 1,
+            "reqd": 1
+        },
+        {
+            "default": "10000",
+            "description": "Transaction threshold above which WHT applies to services. Default: 10,000 ETB",
+            "fieldname": "wht_services_threshold",
+            "fieldtype": "Currency",
+            "label": "WHT Services Threshold (ETB)",
+            "non_negative": 1,
+            "reqd": 1
+        },
+        {
+            "default": "30",
+            "description": "Penalty WHT rate applied when supplier TIN is missing or invalid. Default: 30%",
+            "fieldname": "punitive_wht_rate",
+            "fieldtype": "Percent",
+            "label": "Punitive WHT Rate (%)",
+            "non_negative": 1,
+            "reqd": 1
+        },
+        {
+            "fieldname": "wht_account",
+            "fieldtype": "Link",
+            "label": "WHT Payable Account",
+            "options": "Account"
+        },
+        {
+            "fieldname": "section_break_mat",
+            "fieldtype": "Section Break",
+            "label": "Minimum Alternative Tax (MAT) — Proclamation No. 979/2016 Art. 23"
+        },
+        {
+            "default": "2.5",
+            "description": "MAT is triggered when net profit tax is less than this percentage of gross sales. Default: 2.5%",
+            "fieldname": "mat_rate",
+            "fieldtype": "Percent",
+            "label": "MAT Rate (%)",
+            "non_negative": 1,
+            "reqd": 1
+        },
+        {
+            "fieldname": "section_break_poessa",
+            "fieldtype": "Section Break",
+            "label": "POESSA Pension Remittance"
+        },
+        {
+            "fieldname": "poessa_account",
+            "fieldtype": "Link",
+            "label": "POESSA Pension Account",
+            "options": "Account"
+        },
+        {
+            "default": "30",
+            "description": "Number of days after month-end by which pension must be remitted. Default: 30",
+            "fieldname": "pension_remittance_days",
+            "fieldtype": "Int",
+            "label": "Pension Remittance Deadline (Days)",
+            "non_negative": 1,
+            "reqd": 1
+        },
+        {
+            "fieldname": "section_break_email",
+            "fieldtype": "Section Break",
+            "label": "Compliance Notification Recipients"
+        },
+        {
+            "fieldname": "cfo_email",
+            "fieldtype": "Data",
+            "label": "CFO Email",
+            "options": "Email"
+        },
+        {
+            "fieldname": "hr_email",
+            "fieldtype": "Data",
+            "label": "HR Email",
+            "options": "Email"
+        }
+    ],
+    "index_web_pages_for_search": 1,
+    "is_submittable": 0,
+    "links": [],
+    "modified": "2026-05-04 00:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Ethiopia Compliance",
+    "name": "Compliance Setting",
+    "naming_rule": "By fieldname",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "import": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        }
+    ],
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": [],
+    "track_changes": 1
+}
