@@ -3,68 +3,94 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import flt
 from ethiopia_compliance.accounts.wht_logic import apply_withholding_tax
 from ethiopia_compliance.report.ethiopia_schedule_a.ethiopia_schedule_a import (
-    calculate_schedule_a_tax,
-    _compute_annual_slab_tax
+    calculate_schedule_a_tax
 )
 
 
 class TestWHTLogic(FrappeTestCase):
-    """Prove WHT logic: 30%% penalty for missing TIN, standard 3%% otherwise.
-
-    Thresholds per Proclamation No. 979/2016 Art. 97 (as amended 1395/2017):
-      - Goods:    > 20,000 ETB
-      - Services: > 10,000 ETB
-      - Standard rate: 3%%
-      - Punitive rate (missing TIN): 30%%
-    """
+    """Prove WHT logic: 30%% penalty for missing TIN, standard 3%% otherwise."""
 
     def setUp(self):
-        self.cs_name = "Compliance Setting"
-
-        if not frappe.db.exists("Compliance Setting", self.cs_name):
+        # 1. Compliance Setting values — INSERT...ON DUPLICATE KEY UPDATE
+        for field, value in [
+            ("wht_rate", 3),
+            ("wht_goods_threshold", 20000),
+            ("wht_services_threshold", 10000),
+            ("punitive_wht_rate", 30),
+        ]:
             frappe.db.sql("""
-                INSERT INTO `tabCompliance Setting`
-                    (name, wht_rate, wht_goods_threshold, wht_services_threshold, punitive_wht_rate)
-                VALUES (%(name)s, 3, 20000, 10000, 30)
-            """, {"name": self.cs_name})
+                INSERT INTO `tabSingles` (doctype, field, value)
+                VALUES ('Compliance Setting', %(field)s, %(value)s)
+                ON DUPLICATE KEY UPDATE value = %(value)s
+            """, {"field": field, "value": str(value)})
+        if "Compliance Setting" in frappe.db.value_cache:
+            del frappe.db.value_cache["Compliance Setting"]
 
-        frappe.db.set_value("Compliance Setting", self.cs_name, {
-            "wht_rate": 3,
-            "wht_goods_threshold": 20000,
-            "wht_services_threshold": 10000,
-            "punitive_wht_rate": 30
-        })
-
-        wht_account = frappe.db.get_value("Account", {
-            "account_name": ["like", "%Withholding%"], "is_group": 0
-        }, "name")
-        if wht_account:
-            frappe.db.set_value("Compliance Setting", self.cs_name, "wht_account", wht_account)
-
+        # 2. Setup Test Supplier
         if not frappe.db.exists("Supplier", "_Test WHT Supplier"):
             frappe.get_doc({
-                "doctype": "Supplier", "supplier_name": "_Test WHT Supplier",
-                "supplier_group": "All Supplier Groups", "custom_wht_eligible": 1,
+                "doctype": "Supplier",
+                "supplier_name": "_Test WHT Supplier",
+                "supplier_group": "All Supplier Groups",
+                "custom_wht_eligible": 1
             }).insert(ignore_permissions=True)
 
+        # 3. Setup Test Item (stock)
         if not frappe.db.exists("Item", "_Test WHT Item"):
             frappe.get_doc({
-                "doctype": "Item", "item_code": "_Test WHT Item",
-                "item_name": "_Test WHT Item", "item_group": "All Item Groups",
-                "is_stock_item": 1, "stock_uom": "Nos",
+                "doctype": "Item",
+                "item_code": "_Test WHT Item",
+                "item_name": "Test Stock Item",
+                "item_group": "All Item Groups",
+                "is_stock_item": 1,
+                "stock_uom": "Nos"
+            }).insert(ignore_permissions=True)
+
+        # 4. Create WHT account for BESPO company (needed by apply_withholding_tax)
+        if not frappe.db.exists("Account", {"company": "BESPO", "account_name": ["like", "%Withholding%"]}):
+            frappe.get_doc({
+                "doctype": "Account",
+                "account_name": "Withholding Tax Payable",
+                "account_type": "Tax",
+                "company": "BESPO",
+                "is_group": 0,
             }).insert(ignore_permissions=True)
 
     def _make_invoice(self, tin="", grand_total=15000, is_stock_item=True):
-        company = frappe.defaults.get_user_default("Company") or \
-            frappe.db.get_single_value("Global Defaults", "default_company")
+        """Create a Purchase Invoice for WHT testing.
+
+        is_stock_item=True  -> uses _Test WHT Item (stock item, 20k threshold)
+        is_stock_item=False -> uses _Test Non Stock Item (non-stock, 10k threshold)
+        """
         doc = frappe.new_doc("Purchase Invoice")
         doc.supplier = "_Test WHT Supplier"
-        doc.company = company
+        # custom_supplier_tin has fetch_from=supplier.tax_id; set directly
         doc.custom_supplier_tin = tin
         doc.grand_total = grand_total
         doc.total = grand_total
+        # WHT account lookup requires company — use first active company
+        if not getattr(frappe, "flags", None) or not frappe.flags.company:
+            companies = frappe.get_all("Company", filters={"is_group": 0}, fields=["name"], limit=1)
+            doc.company = companies[0].name if companies else None
+
+        # Select item based on stock flag
+        if is_stock_item:
+            item_code = "_Test WHT Item"
+        else:
+            item_code = "_Test Non Stock Item"
+            # Create non-stock item if needed
+            if not frappe.db.exists("Item", item_code):
+                frappe.get_doc({
+                    "doctype": "Item",
+                    "item_code": item_code,
+                    "item_name": "Test Service Item",
+                    "item_group": "All Item Groups",
+                    "is_stock_item": 0,
+                    "stock_uom": "Nos"
+                }).insert(ignore_permissions=True)
+
         doc.append("items", {
-            "item_code": "_Test WHT Item",
+            "item_code": item_code,
             "qty": 1,
             "rate": grand_total,
             "amount": grand_total,
@@ -72,8 +98,8 @@ class TestWHTLogic(FrappeTestCase):
         return doc
 
     def test_wht_penalty_applied_missing_tin(self):
-        """Missing supplier TIN -> 30%% punitive WHT applied."""
-        doc = self._make_invoice(tin="")
+        """Missing supplier TIN + goods above 20k -> 30%% punitive WHT applied."""
+        doc = self._make_invoice(tin="", grand_total=25000, is_stock_item=True)
         apply_withholding_tax(doc, None)
 
         penalty_row = None
@@ -83,11 +109,11 @@ class TestWHTLogic(FrappeTestCase):
                 break
 
         self.assertIsNotNone(penalty_row, "Expected 30%% penalty WHT row for missing TIN")
-        self.assertAlmostEqual(flt(penalty_row.tax_amount), -(15000 * 0.30), places=1)
+        self.assertAlmostEqual(flt(penalty_row.tax_amount), -(25000 * 0.30), places=1)
 
     def test_wht_penalty_applied_invalid_tin(self):
-        """Invalid format supplier TIN -> 30%% punitive WHT applied."""
-        doc = self._make_invoice(tin="INVALID")
+        """Invalid TIN + goods above 20k -> 30%% punitive WHT applied."""
+        doc = self._make_invoice(tin="INVALID", grand_total=25000, is_stock_item=True)
         apply_withholding_tax(doc, None)
 
         penalty_row = None
@@ -100,7 +126,7 @@ class TestWHTLogic(FrappeTestCase):
 
     def test_wht_standard_rate_goods_above_threshold(self):
         """Valid TIN + goods above 20k threshold -> 3%% standard WHT applied."""
-        doc = self._make_invoice(tin="0012345678", grand_total=25000)
+        doc = self._make_invoice(tin="0012345678", grand_total=25000, is_stock_item=True)
         apply_withholding_tax(doc, None)
 
         penalty_row = any("Penalty" in (t.description or "") for t in doc.taxes)
@@ -112,7 +138,7 @@ class TestWHTLogic(FrappeTestCase):
 
     def test_wht_below_goods_threshold_no_wht(self):
         """Goods invoice below 20k threshold -> no WHT applied."""
-        doc = self._make_invoice(tin="0012345678", grand_total=15000)
+        doc = self._make_invoice(tin="0012345678", grand_total=15000, is_stock_item=True)
         apply_withholding_tax(doc, None)
 
         wht_rows = [t for t in doc.taxes if "WHT" in (t.description or "")]
@@ -132,15 +158,15 @@ class TestWHTLogic(FrappeTestCase):
 
 
 class TestScheduleATaxSlabs(FrappeTestCase):
-    """Prove Schedule A employment income tax slabs per Proclamation 979/2016.
+    """Prove Schedule A employment income tax slabs per Proclamation 1395/2025.
 
     Monthly taxable income slabs:
-        0 - 2,000 ETB:        0%%
-        2,001 - 4,000 ETB:   15%%  (on band above 2,000)
-        4,001 - 7,000 ETB:   20%%  (on band above 4,000)
-        7,001 - 10,000 ETB:  25%%  (on band above 7,000)
-        10,001 - 14,000 ETB: 30%%  (on band above 10,000)
-        Above 14,000 ETB:     35%%  (on band above 14,000)
+        0   – 2,000 ETB:   0%
+        2,001 – 4,000 ETB:  15%  →  (salary * 0.15) - 300
+        4,001 – 7,000 ETB:  20%  →  (salary * 0.20) - 500
+        7,001 – 10,000 ETB: 25%  →  (salary * 0.25) - 850
+        10,001 – 14,000 ETB: 30%  →  (salary * 0.30) - 1350
+        Above 14,000 ETB:   35%  →  (salary * 0.35) - 2050
     """
 
     def test_zero_income(self):
@@ -149,65 +175,48 @@ class TestScheduleATaxSlabs(FrappeTestCase):
         self.assertEqual(calculate_schedule_a_tax(-100), 0.0)
 
     def test_first_bracket(self):
-        """Monthly 1,500 ETB -> within 0%% bracket -> 0 tax."""
+        """Monthly 1,500 ETB -> within 0% bracket -> 0 tax."""
         self.assertEqual(calculate_schedule_a_tax(1500), 0.0)
 
     def test_first_band_only(self):
-        """Monthly 3,000 ETB -> 2,000 at 0%% + 1,000 at 15%% = 150/yr = 12.50/mo."""
+        """Monthly 3,000 ETB -> within 2,001-4,000 band: 3000*0.15 - 300 = 150."""
         result = calculate_schedule_a_tax(3000)
-        expected_annual = 0 + 1000 * 0.15  # only 1,000 in 15%% band
-        self.assertAlmostEqual(result * 12, expected_annual, places=1)
+        self.assertAlmostEqual(result, 150.0, places=2)
 
     def test_second_bracket_full(self):
-        """Monthly 4,000 ETB -> 2,000×0%% + 2,000×15%% = 300/yr = 25.00/mo."""
+        """Monthly 4,000 ETB -> 4000*0.15 - 300 = 300."""
         result = calculate_schedule_a_tax(4000)
-        expected_annual = 2000 * 0.15
-        self.assertAlmostEqual(result * 12, expected_annual, places=1)
+        self.assertAlmostEqual(result, 300.0, places=2)
 
     def test_third_bracket(self):
-        """Monthly 7,000 ETB -> 2,000×0%% + 2,000×15%% + 3,000×20%% = 300+600 = 900/yr."""
+        """Monthly 7,000 ETB -> 7000*0.20 - 500 = 900."""
         result = calculate_schedule_a_tax(7000)
-        expected_annual = 2000 * 0.15 + 3000 * 0.20
-        self.assertAlmostEqual(result * 12, expected_annual, places=1)
+        self.assertAlmostEqual(result, 900.0, places=2)
 
     def test_fourth_bracket(self):
-        """Monthly 10,000 ETB -> full second+third+fourth bands."""
+        """Monthly 10,000 ETB -> 10000*0.25 - 850 = 1650."""
         result = calculate_schedule_a_tax(10000)
-        expected_annual = (2000 * 0.15) + (3000 * 0.20) + (3000 * 0.25)
-        self.assertAlmostEqual(result * 12, expected_annual, places=1)
+        self.assertAlmostEqual(result, 1650.0, places=2)
 
     def test_fifth_bracket(self):
-        """Monthly 14,000 ETB -> all bands 0-14k at their respective rates."""
+        """Monthly 14,000 ETB -> 14000*0.30 - 1350 = 2850."""
         result = calculate_schedule_a_tax(14000)
-        expected_annual = (2000 * 0.15) + (3000 * 0.20) + (3000 * 0.25) + (4000 * 0.30)
-        self.assertAlmostEqual(result * 12, expected_annual, places=1)
+        self.assertAlmostEqual(result, 2850.0, places=2)
 
     def test_top_bracket(self):
-        """Monthly 20,000 ETB -> all bands + excess at 35%%."""
+        """Monthly 20,000 ETB -> 20000*0.35 - 2050 = 4950."""
         result = calculate_schedule_a_tax(20000)
-        # Full 14k bracket + 6,000 at 35%%
-        expected_annual = (
-            2000 * 0.15 +
-            3000 * 0.20 +
-            3000 * 0.25 +
-            4000 * 0.30 +
-            6000 * 0.35
-        )
-        self.assertAlmostEqual(result * 12, expected_annual, places=1)
+        self.assertAlmostEqual(result, 4950.0, places=2)
 
 
 class TestMATCalculation(FrappeTestCase):
-    """Prove MAT (Minimum Alternative Tax) per Proclamation 979/2016 Art. 23.
+    """Prove MAT (Minimum Alternative Tax) per Proclamation 1395/2025 Art. 23.
 
     MAT = 2.5%% of Gross Sales when Net Profit Tax < 2.5%% of Gross Sales.
     """
 
     def test_mat_applies_when_profit_tax_below_mat(self):
         """Low profit margin: net_profit_tax=1%% < mat_rate=2.5%% -> MAT applies."""
-        # Simulate: gross_sales=1,000,000, expenses=980,000 -> net_profit=20,000
-        # net_profit_tax = 20,000 * 0.30 = 6,000 (Schedule C 30%%)
-        # mat_liability = 1,000,000 * 0.025 = 25,000
-        # MAT (25,000) > Schedule C (6,000) -> MAT applies
         net_profit = 20000
         gross_sales = 1000000
         mat_rate = 0.025
@@ -226,10 +235,6 @@ class TestMATCalculation(FrappeTestCase):
 
     def test_mat_does_not_apply_when_profit_tax_above_mat(self):
         """High profit margin: net_profit_tax=5%% > mat_rate=2.5%% -> Schedule C applies."""
-        # gross_sales=200,000, expenses=50,000 -> net_profit=150,000
-        # net_profit_tax = 150,000 * 0.30 = 45,000
-        # mat_liability = 200,000 * 0.025 = 5,000
-        # MAT (5,000) < Schedule C (45,000) -> Schedule C applies
         net_profit = 150000
         gross_sales = 200000
         mat_rate = 0.025
@@ -247,7 +252,7 @@ class TestMATCalculation(FrappeTestCase):
         self.assertAlmostEqual(schedule_c_tax, 45000.0, places=2)
 
     def test_mat_boundary_zero_profit(self):
-        """Zero or negative profit -> MAT is 0."""
+        """Zero net profit -> MAT is still 2.5%% of gross sales per Art. 23."""
         net_profit = 0
         gross_sales = 100000
 
@@ -257,7 +262,7 @@ class TestMATCalculation(FrappeTestCase):
         mat_applied = mat_liability > schedule_c_tax
         final_tax = mat_liability if mat_applied else schedule_c_tax
 
-        self.assertAlmostEqual(final_tax, 0.0, places=2)
+        self.assertAlmostEqual(final_tax, 2500.0, places=2)
 
 
 class TestPaymentLogic(FrappeTestCase):

@@ -32,16 +32,6 @@ INCOME_TAX_COMPONENTS = {"Income Tax", "PAYE", "Employment Income Tax"}
 COST_SHARING_COMPONENTS = {"Cost Sharing", "Cost Sharing (Employee)"}
 EMP_PENSION_COMPONENTS = {"Pension (Employee)", "Employee Pension", "Employee Pension (7%)"}
 
-# ─── Legal Employment Income Tax Slabs (Proclamation No. 979/2016 Schedule A) ─
-# Each tuple: (ceiling, rate_up_to_ceiling)
-# Special handling for the final tier (no ceiling)
-TAX_SLABS = [
-    (2000,  0.00),
-    (4000,  0.15),
-    (7000,  0.20),
-    (10000, 0.25),
-    (14000, 0.30),
-]
 
 
 def execute(filters=None):
@@ -173,68 +163,27 @@ def get_data(filters):
     return data
 
 
-def calculate_schedule_a_tax(monthly_taxable_income):
-    """Compute employment income tax using the Schedule A slabs.
+def calculate_schedule_a_tax(salary):
+    """Compute employment income tax per Proclamation No. 1395/2025 Schedule A.
 
-    Proclamation No. 979/2016 Schedule A (as amended):
-
-        0 – 2,000 ETB:        0%
-        2,001 – 4,000 ETB:   15%  (on the band above 2,000)
-        4,001 – 7,000 ETB:   20%  (on the band above 4,000)
-        7,001 – 10,000 ETB:  25%  (on the band above 7,000)
-        10,001 – 14,000 ETB: 30%  (on the band above 10,000)
-        Above 14,000 ETB:     35%  (on the band above 14,000)
-
-    Args:
-        monthly_taxable_income (float): Monthly taxable income in ETB.
-
-    Returns:
-        float: Annual tax liability (monthly income * 12 * slab rate approach
-               applied to annual total), rounded to 2 decimal places.
+    2025 cumulative deduction method:
+        0   – 2,000 ETB:   0%
+        2,001 – 4,000 ETB: 15%  →  (salary * 0.15) -   300
+        4,001 – 7,000 ETB: 20%  →  (salary * 0.20) -   500
+        7,001 – 10,000 ETB: 25%  →  (salary * 0.25) -   850
+        10,001 – 14,000 ETB: 30%  →  (salary * 0.30) - 1,350
+        Above 14,000 ETB:   35%  →  (salary * 0.35) - 2,050
     """
-    if monthly_taxable_income <= 0:
+    salary = flt(salary)
+    if salary <= 2000:
         return 0.0
-
-    # Annualise for proper slab application (tax is annual)
-    annual_taxable = monthly_taxable_income * 12
-    annual_tax = _compute_annual_slab_tax(annual_taxable)
-
-    # Return monthly equivalent (rounded)
-    return round(annual_tax / 12, 2)
-
-
-def _compute_annual_slab_tax(annual_taxable_income):
-    """Apply Schedule A slabs cumulatively to annual income.
-
-    Args:
-        annual_taxable_income (float): Annual taxable income in ETB.
-
-    Returns:
-        float: Total annual tax in ETB.
-    """
-    if annual_taxable_income <= 2000:
-        return 0.0
-
-    tax = 0.0
-    remaining = annual_taxable_income
-    previous_ceiling = 0.0
-
-    for ceiling, rate in TAX_SLABS:
-        if remaining <= 0:
-            break
-        band_income = min(remaining, ceiling - previous_ceiling)
-        if annual_taxable_income > previous_ceiling:
-            taxable_in_band = min(band_income, annual_taxable_income - previous_ceiling)
-            if taxable_in_band > 0:
-                tax += taxable_in_band * rate
-        remaining -= band_income
-        previous_ceiling = ceiling
-
-        if annual_taxable_income <= ceiling:
-            break
-
-    # Final tier (above 14,000) — 35%
-    if annual_taxable_income > 14000:
-        tax += (annual_taxable_income - 14000) * 0.35
-
-    return tax
+    elif salary <= 4000:
+        return (salary * 0.15) - 300
+    elif salary <= 7000:
+        return (salary * 0.20) - 500
+    elif salary <= 10000:
+        return (salary * 0.25) - 850
+    elif salary <= 14000:
+        return (salary * 0.30) - 1350
+    else:
+        return (salary * 0.35) - 2050
