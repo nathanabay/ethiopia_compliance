@@ -271,3 +271,101 @@ def get_overview_stats(company=None):
         'employees': employees,
         'active_contracts': active_contracts
     }
+
+
+def get_chart_data(period='this_month', from_date=None, to_date=None):
+    """Get chart data for the dashboard - Revenue, Expenses, Cash Flow, Taxes"""
+    from frappe.utils import add_months, get_last_day
+    from datetime import datetime
+
+    company = frappe.defaults.get_user_default("Company")
+
+    if not company:
+        return {"revenue": [], "expenses": [], "cash_flow": [], "taxes": {"wht": [], "vat": [], "tot": []}}
+
+    # Get monthly data for revenue and expenses
+    def get_monthly_data(doctype, date_field, amount_field="base_net_total"):
+        months = {}
+        for i in range(12):
+            month_date = add_months(today(), -i)
+            month_dt = datetime.strptime(month_date, '%Y-%m-%d')
+            month_end = get_last_day(month_date)
+            month_label = month_dt.strftime('%b')
+
+            data = frappe.db.sql(f"""
+                SELECT SUM({amount_field}) as amount
+                FROM `tab{doctype}`
+                WHERE {date_field} BETWEEN %s AND %s
+                AND company = %s
+                AND docstatus = 1
+            """, (month_date, month_end.strftime('%Y-%m-%d'), company), as_dict=True)
+
+            months[month_label] = flt(data[0].amount) if data and data[0].amount else 0
+
+        return [{"month": k, "amount": v} for k, v in sorted(months.items())]
+
+    revenue = get_monthly_data("Sales Invoice", "posting_date")
+    expenses = get_monthly_data("Purchase Invoice", "posting_date")
+
+    # Cash flow = revenue - expenses per month
+    cash_flow = []
+    for rev, exp in zip(revenue, expenses):
+        cash_flow.append({"month": rev["month"], "amount": rev["amount"] - exp["amount"]})
+
+    # Tax data per month
+    taxes = {"wht": [], "vat": [], "tot": []}
+    for i in range(12):
+        month_date = add_months(today(), -i)
+        month_dt = datetime.strptime(month_date, '%Y-%m-%d')
+        month_end = get_last_day(month_date)
+        month_label = month_dt.strftime('%b')
+
+        # WHT
+        wht = frappe.db.sql("""
+            SELECT ABS(SUM(ptc.tax_amount)) as amount
+            FROM `tabPurchase Invoice` pi
+            JOIN `tabPurchase Taxes and Charges` ptc ON ptc.parent = pi.name
+            WHERE pi.posting_date BETWEEN %s AND %s
+            AND pi.company = %s AND pi.docstatus = 1
+            AND (ptc.account_head LIKE '%%Withholding%%' OR ptc.description LIKE '%%WHT%%')
+        """, (month_date, month_end.strftime('%Y-%m-%d'), company), as_dict=True)
+        taxes["wht"].append({"month": month_label, "amount": flt(wht[0].amount) if wht and wht[0].amount else 0})
+
+        # VAT
+        vat = frappe.db.sql("""
+            SELECT ABS(SUM(stc.tax_amount)) as amount
+            FROM `tabSales Invoice` si
+            JOIN `tabSales Taxes and Charges` stc ON stc.parent = si.name
+            WHERE si.posting_date BETWEEN %s AND %s
+            AND si.company = %s AND si.docstatus = 1
+            AND (stc.account_head LIKE '%%VAT%%' OR stc.description LIKE '%%VAT%%')
+        """, (month_date, month_end.strftime('%Y-%m-%d'), company), as_dict=True)
+        taxes["vat"].append({"month": month_label, "amount": flt(vat[0].amount) if vat and vat[0].amount else 0})
+
+        # TOT
+        try:
+            settings = frappe.get_cached_doc("Compliance Setting")
+            if settings.get("tot_account"):
+                tot = frappe.db.sql("""
+                    SELECT ABS(SUM(stc.tax_amount)) as amount
+                    FROM `tabSales Invoice` si
+                    JOIN `tabSales Taxes and Charges` stc ON stc.parent = si.name
+                    WHERE si.posting_date BETWEEN %s AND %s
+                    AND si.company = %s AND si.docstatus = 1 AND stc.account_head = %s
+                """, (month_date, month_end.strftime('%Y-%m-%d'), company, settings.tot_account), as_dict=True)
+                taxes["tot"].append({"month": month_label, "amount": flt(tot[0].amount) if tot and tot[0].amount else 0})
+            else:
+                taxes["tot"].append({"month": month_label, "amount": 0})
+        except Exception:
+            taxes["tot"].append({"month": month_label, "amount": 0})
+
+    return {
+        "revenue": list(reversed(revenue)),
+        "expenses": list(reversed(expenses)),
+        "cash_flow": list(reversed(cash_flow)),
+        "taxes": {
+            "wht": list(reversed(taxes["wht"])),
+            "vat": list(reversed(taxes["vat"])),
+            "tot": list(reversed(taxes["tot"]))
+        }
+    }

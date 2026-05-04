@@ -1,7 +1,7 @@
 from unittest import mock
 
 from frappe.tests.utils import FrappeTestCase
-from ethiopia_compliance.page.compliance_dashboard.compliance_dashboard import get_overview_stats
+from ethiopia_compliance.page.compliance_dashboard.compliance_dashboard import get_overview_stats, get_chart_data
 
 
 class TestDashboardStats(FrappeTestCase):
@@ -52,3 +52,19 @@ class TestDashboardStats(FrappeTestCase):
         self.assertLessEqual(result['fiscal_devices'], 10000, "fiscal_devices unexpectedly large")
         self.assertLessEqual(result['employees'], 100000, "employees unexpectedly large")
         self.assertLessEqual(result['active_contracts'], 10000, "active_contracts unexpectedly large")
+
+
+def test_get_chart_data():
+    """Test that chart data returns expected structure"""
+    from ethiopia_compliance.page.compliance_dashboard.compliance_dashboard import get_chart_data
+
+    result = get_chart_data("this_month")
+
+    assert isinstance(result, dict)
+    assert "revenue" in result
+    assert "expenses" in result
+    assert "cash_flow" in result
+    assert "taxes" in result
+    assert result["taxes"].get("wht") is not None
+    assert result["taxes"].get("vat") is not None
+    assert result["taxes"].get("tot") is not None
