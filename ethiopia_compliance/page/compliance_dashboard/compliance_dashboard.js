@@ -98,6 +98,43 @@ class ComplianceDashboard {
 
     render_skeleton() {
         this.parent.html(`
+            <style>
+                .stat-cards-row {
+                    margin-bottom: 20px;
+                }
+                .stat-card {
+                    background: white;
+                    border-radius: 8px;
+                    padding: 20px;
+                    display: flex;
+                    align-items: center;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                }
+                .stat-card-icon {
+                    width: 50px;
+                    height: 50px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-right: 15px;
+                    color: white;
+                }
+                .stat-card-info {
+                    display: flex;
+                    flex-direction: column;
+                }
+                .stat-card-label {
+                    font-size: 12px;
+                    color: #6c757d;
+                    text-transform: uppercase;
+                }
+                .stat-card-value {
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #2d3748;
+                }
+            </style>
             <div class="compliance-dashboard">
                 <div class="row" style="margin-bottom: 20px;">
                     <div class="col-md-8">
@@ -112,6 +149,53 @@ class ComplianceDashboard {
                         <div class="card" style="height: 100%;">
                             <div class="card-body" style="display: flex; align-items: center; justify-content: center;">
                                 <div id="period-selector-container"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row stat-cards-row">
+                    <div class="col-sm-3">
+                        <div class="stat-card">
+                            <div class="stat-card-icon bg-primary">
+                                <i class="fa fa-building"></i>
+                            </div>
+                            <div class="stat-card-info">
+                                <span class="stat-card-label">Total Companies</span>
+                                <span class="stat-card-value" id="total-companies">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="stat-card">
+                            <div class="stat-card-icon bg-success">
+                                <i class="fa fa-hardware"></i>
+                            </div>
+                            <div class="stat-card-info">
+                                <span class="stat-card-label">Fiscal Devices</span>
+                                <span class="stat-card-value" id="fiscal-devices">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="stat-card">
+                            <div class="stat-card-icon bg-warning">
+                                <i class="fa fa-users"></i>
+                            </div>
+                            <div class="stat-card-info">
+                                <span class="stat-card-label">Employees</span>
+                                <span class="stat-card-value" id="employees">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="stat-card">
+                            <div class="stat-card-icon bg-info">
+                                <i class="fa fa-file-contract"></i>
+                            </div>
+                            <div class="stat-card-info">
+                                <span class="stat-card-label">Active Contracts</span>
+                                <span class="stat-card-value" id="active-contracts">--</span>
                             </div>
                         </div>
                     </div>
@@ -271,6 +355,14 @@ class ComplianceDashboard {
             this.parent.find('#tot-turnover').text(
                 'Turnover: ' + format_currency(data.tax_summary.tot.total_turnover, 'ETB')
             );
+        }
+
+        // Update stat cards
+        if (data.overview_stats) {
+            this.parent.find('#total-companies').text(data.overview_stats.total_companies || 0);
+            this.parent.find('#fiscal-devices').text(data.overview_stats.fiscal_devices || 0);
+            this.parent.find('#employees').text(data.overview_stats.employees || 0);
+            this.parent.find('#active-contracts').text(data.overview_stats.active_contracts || 0);
         }
 
         // Compliance Status
