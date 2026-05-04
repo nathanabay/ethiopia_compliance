@@ -134,6 +134,19 @@ class ComplianceDashboard {
                     font-weight: bold;
                     color: #2d3748;
                 }
+                .chart-row {
+                    margin-bottom: 20px;
+                }
+                .chart-container {
+                    background: white;
+                    border-radius: 8px;
+                    padding: 20px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                }
+                .chart-container h6 {
+                    margin-bottom: 15px;
+                    font-weight: 600;
+                }
             </style>
             <div class="compliance-dashboard">
                 <div class="row" style="margin-bottom: 20px;">
@@ -197,6 +210,35 @@ class ComplianceDashboard {
                                 <span class="stat-card-label">Active Contracts</span>
                                 <span class="stat-card-value" id="active-contracts">--</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row chart-row">
+                    <div class="col-sm-6">
+                        <div class="chart-container">
+                            <h6>Revenue</h6>
+                            <div id="revenue-chart"></div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="chart-container">
+                            <h6>Expenses</h6>
+                            <div id="expenses-chart"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row chart-row">
+                    <div class="col-sm-6">
+                        <div class="chart-container">
+                            <h6>Cash Flow</h6>
+                            <div id="cash-flow-chart"></div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="chart-container">
+                            <h6>Taxes</h6>
+                            <div id="taxes-chart"></div>
                         </div>
                     </div>
                 </div>
@@ -365,6 +407,8 @@ class ComplianceDashboard {
             this.parent.find('#active-contracts').text(data.overview_stats.active_contracts || 0);
         }
 
+        this.render_charts(data);
+
         // Compliance Status
         this.render_compliance_status(data.compliance_status);
 
@@ -502,5 +546,82 @@ class ComplianceDashboard {
 
         html += '</tbody></table>';
         this.parent.find('#recent-documents').html(html);
+    }
+
+    render_charts(data) {
+        if (!data.chart_data) return;
+
+        const chart_options = {
+            autoScale: true,
+            showFill: true,
+            axisY: {
+                showLabel: true,
+                onlyInteger: false
+            }
+        };
+
+        // Revenue Chart
+        if (data.chart_data.revenue && data.chart_data.revenue.length > 0) {
+            new frappe.chart('#revenue-chart', {
+                data: {
+                    labels: data.chart_data.revenue.map(d => d.month),
+                    datasets: [{
+                        name: 'Revenue',
+                        values: data.chart_data.revenue.map(d => d.amount)
+                    }]
+                },
+                type: 'line',
+                options: chart_options
+            });
+        }
+
+        // Expenses Chart
+        if (data.chart_data.expenses && data.chart_data.expenses.length > 0) {
+            new frappe.chart('#expenses-chart', {
+                data: {
+                    labels: data.chart_data.expenses.map(d => d.month),
+                    datasets: [{
+                        name: 'Expenses',
+                        values: data.chart_data.expenses.map(d => d.amount)
+                    }]
+                },
+                type: 'line',
+                options: chart_options
+            });
+        }
+
+        // Cash Flow Chart
+        if (data.chart_data.cash_flow && data.chart_data.cash_flow.length > 0) {
+            new frappe.chart('#cash-flow-chart', {
+                data: {
+                    labels: data.chart_data.cash_flow.map(d => d.month),
+                    datasets: [{
+                        name: 'Cash Flow',
+                        values: data.chart_data.cash_flow.map(d => d.amount)
+                    }]
+                },
+                type: 'bar',
+                options: chart_options
+            });
+        }
+
+        // Taxes Chart (stacked bar for WHT, VAT, TOT)
+        if (data.chart_data.taxes) {
+            new frappe.chart('#taxes-chart', {
+                data: {
+                    labels: data.chart_data.taxes.wht.map(d => d.month),
+                    datasets: [
+                        { name: 'WHT', values: data.chart_data.taxes.wht.map(d => d.amount) },
+                        { name: 'VAT', values: data.chart_data.taxes.vat.map(d => d.amount) },
+                        { name: 'TOT', values: data.chart_data.taxes.tot.map(d => d.amount) }
+                    ]
+                },
+                type: 'bar',
+                options: {
+                    ...chart_options,
+                    stacked: true
+                }
+            });
+        }
     }
 }
