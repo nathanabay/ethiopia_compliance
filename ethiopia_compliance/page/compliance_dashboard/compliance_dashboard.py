@@ -229,3 +229,45 @@ def get_compliance_status(company):
 		status['fiscal_year_set'] = True
 
 	return status
+
+
+def get_overview_stats(company=None):
+    """Get overview statistics for dashboard stat cards"""
+    if not company:
+        company = frappe.defaults.get_user_default("Company")
+
+    if not company:
+        return {
+            'total_companies': 0,
+            'fiscal_devices': 0,
+            'employees': 0,
+            'active_contracts': 0
+        }
+
+    # Count companies in Ethiopia
+    total_companies = frappe.db.count("Company", {"country": "Ethiopia"})
+
+    # Count active fiscal devices (gracefully handle if doctype doesn't exist)
+    try:
+        fiscal_devices = frappe.db.count("Fiscal Device", {"status": "Active"})
+    except Exception:
+        fiscal_devices = 0
+
+    # Count employees for this company
+    try:
+        employees = frappe.db.count("Employee", {"company": company, "status": "Active"})
+    except Exception:
+        employees = 0
+
+    # Count active contracts (gracefully handle if doctype doesn't exist)
+    try:
+        active_contracts = frappe.db.count("Contract", {"status": "Active", "company": company})
+    except Exception:
+        active_contracts = 0
+
+    return {
+        'total_companies': total_companies,
+        'fiscal_devices': fiscal_devices,
+        'employees': employees,
+        'active_contracts': active_contracts
+    }
