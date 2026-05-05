@@ -92,13 +92,18 @@ def on_payment_submit(doc, method):
         )
 
 
+WHT_KEYWORDS = frozenset({"withholding", "wht"})
+
+
+def _matches_wht(description: str) -> bool:
+    """Return True if description indicates a WHT tax row."""
+    desc = (description or "").lower()
+    return bool(WHT_KEYWORDS & set(desc.split())) or any(kw in desc for kw in WHT_KEYWORDS)
+
+
 def _invoice_has_wht(invoice):
     """Return True if the purchase invoice has WHT applied."""
-    return any(
-        "withholding" in (t.description or "").lower()
-        or "wht" in (t.description or "").lower()
-        for t in invoice.taxes
-    )
+    return any(_matches_wht(t.description) for t in invoice.taxes)
 
 
 def _get_invoice_with_wht(invoice_name):
@@ -107,12 +112,12 @@ def _get_invoice_with_wht(invoice_name):
         return None
 
     inv = frappe.get_doc("Purchase Invoice", invoice_name)
-    has_wht = any(
-        "withholding" in (t.description or "").lower()
-        or "wht" in (t.description or "").lower()
-        for t in inv.taxes
-    )
-    return inv if has_wht else None
+    return inv if _invoice_has_wht(inv) else None
+
+
+def _extract_wht_amount(invoice):
+    """Extract total WHT amount from a Purchase Invoice's taxes."""
+    return sum(flt(t.tax_amount) for t in invoice.taxes if _matches_wht(t.description))
 
 
 def _create_wht_certificate_for_invoice(invoice_name, supplier, company,
@@ -169,7 +174,7 @@ def _link_invoice_to_certificate(cert_name, invoice_name, payment_entry):
     cert.append("invoice_details", {
         "invoice": invoice_name,
         "posting_date": inv.posting_date,
-        "purchase_amount": flt(inv.base_net_total or inv.total),
+        "purchase_amount": flt(inv.base_net_total) if inv.base_net_total else flt(inv.total),
         "wht_deducted": abs(wht_amount)
     })
 
@@ -183,19 +188,9 @@ def _link_invoice_to_certificate(cert_name, invoice_name, payment_entry):
     cert.total_purchase_amount = total_purchase
     cert.total_wht_deducted = total_wht
     if total_purchase > 0:
-        cert.wht_rate = (total_wht / total_purchase) * 100
+        cert.wht_rate = flt((total_wht / total_purchase) * 100, 2)
 
     cert.save(ignore_permissions=True)
-
-
-def _extract_wht_amount(invoice):
-    """Extract total WHT amount from a Purchase Invoice's taxes."""
-    wht_rows = [
-        t for t in invoice.taxes
-        if ("withholding" in (t.description or "").lower()
-            or "wht" in (t.description or "").lower())
-    ]
-    return sum(flt(t.tax_amount) for t in wht_rows)
 
 
 def _email_wht_certificate(cert, supplier):
@@ -270,7 +265,14 @@ def _email_wht_certificate(cert, supplier):
 
 
 def _get_supplier_contact_email(supplier):
-    """Return the primary contact email for a supplier."""
+    """Return the primary contact email for a supplier.
+
+    Args:
+        supplier (str): Supplier name
+
+    Returns:
+        str | None: Primary contact email, or fallback email if primary not set
+    """
     email = frappe.db.get_value(
         "Contact",
         {"supplier": supplier, "is_primary_contact": 1},

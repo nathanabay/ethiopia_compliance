@@ -107,9 +107,9 @@ class TaxPercentageofCompletion(Document):
         return flt(costs[0].total_cost) if costs and costs[0].total_cost else 0.0
 
 
-@frappe.whitelist()
-def calculate_poc(project, period_from, period_to,
-                   contract_value, prior_revenue=0):
+@frappe.whitelist(force_types=True)
+def calculate_poc(project: str, period_from: str, period_to: str,
+                   contract_value: float, prior_revenue: float = 0) -> dict:
     """API: compute PoC for a contract without saving.
 
     Args:
@@ -122,6 +122,7 @@ def calculate_poc(project, period_from, period_to,
     Returns:
         dict: {poc_percentage, cumulative_revenue, taxable_revenue_period}
     """
+    frappe.only_for("Account Manager", "System Manager")
     try:
         doc = frappe.new_doc("Tax Percentage of Completion")
         doc.project = project
@@ -142,8 +143,7 @@ def calculate_poc(project, period_from, period_to,
         }
 
     except Exception:
-        frappe.log_error(
-            frappe.get_traceback(),
+        frappe.log_error(frappe.get_traceback(),
             "Ethiopia Compliance Error: calculate_poc"
         )
         frappe.throw(_("Failed to compute Percentage of Completion."))

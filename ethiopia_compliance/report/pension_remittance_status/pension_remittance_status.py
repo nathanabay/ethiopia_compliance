@@ -1,9 +1,16 @@
 # Copyright (c) 2026, Bespo and contributors
 # For license information, please see license.txt
 
+from calendar import monthrange
+
 import frappe
 from frappe import _
 from frappe.utils import flt, getdate, add_days, today, date_diff
+
+
+def _get_month_end(dt):
+	"""Return last day of the month for a given date (cross-DB compatible)."""
+	return dt.replace(day=monthrange(dt.year, dt.month)[1])
 
 
 def execute(filters=None):
@@ -31,17 +38,18 @@ def execute(filters=None):
 		frappe.throw(_("To Date filter is required."))
 
 	# Get monthly pension totals from submitted salary slips
+	# NOTE: month_key and month_end computed in Python (cross-DB compatible)
 	slips = frappe.db.sql("""
 		SELECT
-			DATE_FORMAT(ss.start_date, '%%Y-%%m') as month_key,
-			LAST_DAY(ss.start_date) as month_end,
+			ss.start_date,
 			ss.name as slip_name
 		FROM `tabSalary Slip` ss
 		WHERE ss.docstatus = 1
 			AND ss.company = %(company)s
 			AND ss.start_date >= %(from_date)s
 			AND ss.end_date <= %(to_date)s
-		ORDER BY month_key
+		ORDER BY ss.start_date
+		LIMIT 10000
 	""", {
 		"company": filters["company"],
 		"from_date": filters["from_date"],
@@ -63,21 +71,26 @@ def execute(filters=None):
 		WHERE sd.parent IN %(slip_names)s
 	""", {"slip_names": slip_names}, as_dict=True)
 
-	# Aggregate by month
+	# Aggregate by month — compute month_key and month_end in Python
 	monthly = {}
 	for s in slips:
-		mk = s.month_key
+		dt = getdate(s.start_date)
+		mk = dt.strftime("%Y-%m")
+		month_end = _get_month_end(dt)
 		if mk not in monthly:
 			monthly[mk] = {
 				"month": mk,
-				"month_end": s.month_end,
+				"month_end": month_end,
 				"emp_pension": 0.0,
 				"org_pension": 0.0,
 				"slip_names": []
 			}
 		monthly[mk]["slip_names"].append(s.slip_name)
 
-	slip_to_month = {s.slip_name: s.month_key for s in slips}
+	slip_to_month = {}
+	for s in slips:
+		dt = getdate(s.start_date)
+		slip_to_month[s.slip_name] = dt.strftime("%Y-%m")
 
 	for c in components:
 		mk = slip_to_month.get(c.parent)
@@ -87,14 +100,12 @@ def execute(filters=None):
 			elif c.salary_component in ORG_PENSION:
 				monthly[mk]["org_pension"] += flt(c.amount)
 
-	# Get pension remittance payments
+	# Get pension remittance payments — year/month computed in Python (cross-DB)
 	remittances = frappe.db.sql("""
 		SELECT
 			pe.name,
 			pe.posting_date,
-			pe.paid_amount,
-			YEAR(pe.posting_date) as remit_year,
-			MONTH(pe.posting_date) as remit_month
+			pe.paid_amount
 		FROM `tabPayment Entry` pe
 		WHERE pe.docstatus = 1
 			AND pe.company = %(company)s
@@ -106,21 +117,23 @@ def execute(filters=None):
 			)
 			AND pe.posting_date >= %(from_date)s
 		ORDER BY pe.posting_date
+		LIMIT 10000
 	""", {
 		"company": filters["company"],
 		"from_date": filters["from_date"],
 		"poessa": "%%POESSA%%"
 	}, as_dict=True)
 
-	# Aggregate remittances by month
+	# Aggregate remittances by month — year/month computed in Python
 	remit_by_month = {}
 	for r in remittances:
-		mk = f"{r.remit_year}-{r.remit_month:02d}"
+		dt = getdate(r.posting_date)
+		mk = dt.strftime("%Y-%m")
 		if mk not in remit_by_month:
-			remit_by_month[mk] = {"amount": 0.0, "last_date": r.posting_date}
+			remit_by_month[mk] = {"amount": 0.0, "last_date": dt}
 		remit_by_month[mk]["amount"] += flt(r.paid_amount)
-		if r.posting_date > remit_by_month[mk]["last_date"]:
-			remit_by_month[mk]["last_date"] = r.posting_date
+		if dt > remit_by_month[mk]["last_date"]:
+			remit_by_month[mk]["last_date"] = dt
 
 	# Build final data with risk levels
 	data = []

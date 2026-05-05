@@ -180,9 +180,9 @@ def fiscal_year_to_str(date_str):
     return str(d.year)
 
 
-@frappe.whitelist()
-def calculate_pool_depreciation(asset_category, total_cost,
-                                 initial_allowance_rate=0):
+@frappe.whitelist(force_types=True)
+def calculate_pool_depreciation(asset_category: str, total_cost: float,
+                                 initial_allowance_rate: float = 0) -> dict:
     """API: compute depreciation schedule for a proposed asset pool.
 
     Args:
@@ -193,6 +193,7 @@ def calculate_pool_depreciation(asset_category, total_cost,
     Returns:
         dict: {schedule: [...], total_depreciation: float, tax_wdv: float}
     """
+    frappe.only_for("Account Manager", "System Manager")
     try:
         doc = frappe.new_doc("Tax Asset Pool")
         doc.asset_category = asset_category
@@ -218,8 +219,7 @@ def calculate_pool_depreciation(asset_category, total_cost,
         return {"schedule": rows, "total_depreciation": total_dep, "tax_wdv": tax_wdv}
 
     except Exception:
-        frappe.log_error(
-            frappe.get_traceback(),
+        frappe.log_error(frappe.get_traceback(),
             "Ethiopia Compliance Error: calculate_pool_depreciation"
         )
         frappe.throw(_("Failed to compute tax depreciation schedule."))

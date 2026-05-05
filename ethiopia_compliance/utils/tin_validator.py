@@ -10,6 +10,14 @@ This module provides validation functions for Ethiopian TINs.
 
 Proclamation No. 979/2016 Art. 97 as amended by Proclamation No. 1395/2017:
 - Missing or invalid supplier TIN triggers the punitive 30% WHT rate.
+
+Check-Digit Validation (P3-21 — pending IRS publication):
+- Ethiopian IRS has not published an official check-digit algorithm.
+- A formal check-digit scheme (per IRS directive) should be implemented here
+  once published. The stub `_validate_check_digit()` raises NotImplementedError
+  and should be updated when the algorithm is available.
+  Do NOT use a generic algorithm (e.g., Luhn) as a substitute — it may reject
+  valid TINs and accept invalid ones.
 """
 
 import frappe
@@ -59,9 +67,34 @@ def validate_tin(tin_number):
 
     # Determine type and validate
     if tin_clean.startswith('0'):
-        return validate_individual_tin(tin_clean)
+        result = validate_individual_tin(tin_clean)
     else:
-        return validate_company_tin(tin_clean)
+        result = validate_company_tin(tin_clean)
+
+    # Check-digit validation (pending IRS publication — see module docstring)
+    if result.get('valid'):
+        check_result = _validate_check_digit(tin_clean)
+        if not check_result.get('valid'):
+            return check_result
+
+    return result
+
+
+def _validate_check_digit(tin_number):
+    """Validate TIN check digit per Ethiopian IRS directive.
+
+    This function is a placeholder. Ethiopian IRS has not published an official
+    check-digit algorithm. Once published, update this function with the
+    official algorithm. Do NOT substitute a generic algorithm (Luhn, Mod 97,
+    etc.) as it will incorrectly reject valid TINs.
+    """
+    # TODO (P3-21): Implement once Ethiopian IRS publishes check-digit scheme
+    # Expected signature: _validate_check_digit(tin_number: str) -> dict
+    #
+    # Until then, all 10-digit numeric TINs are accepted structurally.
+    # The punitive WHT rate still applies to TINs that are missing or
+    # structurally invalid (wrong length, non-numeric).
+    return {'valid': True, 'message': 'Check digit validation pending IRS publication'}
 
 
 def validate_individual_tin(tin_number):

@@ -57,7 +57,7 @@ ethiopia_compliance.calendar.show_selector = function (frm) {
         primary_action: function (values) {
             let day = values.day.toString().padStart(2, '0');
             let date_str = day + '-' + values.month + '-' + values.year;
-            frm.set_value('ethiopian_date', date_str);
+            frm.set_value('custom_ethiopian_date', date_str);
             d.hide();
         },
         onhide: function () { frm.selector_open = false; }
@@ -71,8 +71,8 @@ ethiopia_compliance.calendar.sync = function (frm, fieldname) {
             method: "ethiopia_compliance.utils.get_ec_date",
             args: { date: frm.doc[fieldname] },
             callback: function (r) {
-                if (r.message && r.message !== frm.doc.ethiopian_date) {
-                    frm.set_value('ethiopian_date', r.message);
+                if (r.message && r.message !== frm.doc.custom_ethiopian_date) {
+                    frm.set_value('custom_ethiopian_date', r.message);
                 }
             }
         });
@@ -112,8 +112,8 @@ $(document).on('app_ready', function () {
         target_doctypes.forEach(function (dt) {
             frappe.ui.form.on(dt, {
                 refresh: function (frm) {
-                    if (frm.fields_dict['ethiopian_date']) {
-                        frm.fields_dict['ethiopian_date'].$input.on('click', function () {
+                    if (frm.fields_dict['custom_ethiopian_date']) {
+                        frm.fields_dict['custom_ethiopian_date'].$input.on('click', function () {
                             if (!frm.selector_open) {
                                 ethiopia_compliance.calendar.show_selector(frm);
                             }
@@ -121,7 +121,7 @@ $(document).on('app_ready', function () {
                     }
 
                     let fieldname = date_field_map[dt];
-                    if (frm.doc[fieldname] && !frm.doc.ethiopian_date) {
+                    if (frm.doc[fieldname] && !frm.doc.custom_ethiopian_date) {
                         ethiopia_compliance.calendar.sync(frm, fieldname);
                     }
                 },
@@ -135,11 +135,11 @@ $(document).on('app_ready', function () {
                 start_date: function (frm) { ethiopia_compliance.calendar.sync(frm, 'start_date'); },
                 expected_start_date: function (frm) { ethiopia_compliance.calendar.sync(frm, 'expected_start_date'); },
 
-                ethiopian_date: function (frm) {
-                    if (frm.doc.ethiopian_date && frm.doc.ethiopian_date.length >= 8) {
+                custom_ethiopian_date: function (frm) {
+                    if (frm.doc.custom_ethiopian_date && frm.doc.custom_ethiopian_date.length >= 8) {
                         frappe.call({
                             method: "ethiopia_compliance.utils.get_gc_date",
-                            args: { ethiopian_date: frm.doc.ethiopian_date },
+                            args: { custom_ethiopian_date: frm.doc.custom_ethiopian_date },
                             callback: function (r) {
                                 if (r.message) {
                                     let target = date_field_map[dt];

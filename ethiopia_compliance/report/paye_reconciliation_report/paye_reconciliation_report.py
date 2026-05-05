@@ -62,6 +62,7 @@ def execute(filters=None):
 			AND start_date >= %(start_date)s
 			AND end_date <= %(end_date)s
 		ORDER BY employee
+		LIMIT 10000
 	""", {
 		"company": filters["company"],
 		"start_date": start_date,

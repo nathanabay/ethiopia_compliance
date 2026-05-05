@@ -18,6 +18,9 @@ def register_sales_invoice(doc, method):
 	If fiscal device integration is enabled, constructs the invoice payload,
 	sends it to the fiscal device API, and stamps the returned FS Number
 	and Fiscal Machine No onto the document.
+
+	The actual HTTP call is deferred to a background job to avoid blocking
+	document submission (max 90s potential latency from retries).
 	"""
 	# 1. Check if integration is enabled
 	settings = frappe.get_cached_doc("Compliance Setting")
@@ -29,17 +32,78 @@ def register_sales_invoice(doc, method):
 		return
 
 	api_endpoint = (settings.get("fiscal_device_api_endpoint") or "").strip()
-	device_type = (settings.get("fiscal_device_type") or "").strip()
-	serial = (settings.get("device_serial_number") or "").strip()
 
 	if not api_endpoint:
-		frappe.msgprint(
-			_("Fiscal device is enabled but no API endpoint is configured in Compliance Setting."),
-			indicator="orange", alert=True
+		frappe.throw(
+			_("Fiscal device is enabled but no API endpoint is configured in Compliance Setting.")
 		)
-		return
 
-	# 2. Construct payload
+	# Defer HTTP call to background job to avoid blocking submission.
+	# Credentials (device_secret, api_key) are NOT passed as enqueue args —
+	# they are stored in site_config and read by the worker at runtime.
+	# This prevents sensitive data from being serialized to the Redis queue.
+
+	# Job deduplication: prevent double-enqueue if retry/submit happens quickly
+	job_key = f"fiscal_device_{doc.name}"
+	if not frappe.lock(job_key, timeout=300):
+		return  # another job already pending for this invoice
+
+	frappe.enqueue(
+		"ethiopia_compliance.integrations.fiscal_device._register_sales_invoice_bg",
+		invoice_name=doc.name,
+		api_endpoint=api_endpoint,
+		device_type=(settings.get("fiscal_device_type") or "").strip(),
+		serial=(settings.get("device_serial_number") or "").strip(),
+		queue="long",
+		timeout=1200,
+		on_failure=_fiscal_device_job_failed
+	)
+
+
+def _fiscal_device_job_failed(job, exc):
+	"""Callback when fiscal device background job fails (M14 — silent failures fixed)."""
+	frappe.log_error(
+		title="Fiscal Device Background Job Failed",
+		message=f"Invoice: {job.args.get('invoice_name', 'unknown')}\n\n"
+		         f"Error: {exc}"
+	)
+	# Notify System Manager so failure isn't silent
+	notify_users_with_role(
+		"System Manager",
+		_("Fiscal Device Registration Failed"),
+		_("Background job failed for invoice {0}: {1}").format(
+			job.args.get("invoice_name", "unknown"), exc
+		)
+	)
+
+
+def notify_users_with_role(role, subject, message):
+	"""Send notification to all users with a given role."""
+	users = frappe.db.get_all(
+		"Has Role",
+		filters={"role": role, "parenttype": "User"},
+		fields=["parent"]
+	)
+	for user_row in users:
+		frappe.sendmail(
+			recipients=[user_row.parent],
+			subject=subject,
+			message=message
+		)
+
+
+def _register_sales_invoice_bg(invoice_name, api_endpoint, device_type, serial):
+	"""Background worker: register invoice with fiscal device and stamp FS Number.
+
+	Credentials are read from site_config at runtime — never passed via enqueue args.
+	"""
+	# Read sensitive credentials from site_config (never serialized to Redis)
+	device_secret = frappe.conf.get("fiscal_device_secret") or ""
+	api_key = frappe.conf.get("fiscal_device_api_key") or ""
+
+	doc = frappe.get_doc("Sales Invoice", invoice_name)
+
+	# Construct payload
 	items = []
 	for item in doc.items:
 		items.append({
@@ -65,29 +129,14 @@ def register_sales_invoice(doc, method):
 		"requested_at": str(now_datetime())
 	}
 
-	# 3. Call fiscal device API
-	# -------------------------------------------
-	# NexGo devices: HTTP POST with HMAC-SHA256 signed JSON-RPC payload.
-	# EFD devices: proprietary binary protocol over TCP socket (requires pyserial).
-	#
+	# Call fiscal device API
 	# Retry policy: up to 3 attempts with exponential backoff (1s, 2s, 4s).
-	# Timeout per attempt: 30 seconds. On timeout or 5xx, retry.
-	# On 4xx client error (bad payload), do NOT retry — inspect response and log.
-	#
-	# Required Compliance Setting fields:
-	#   - fiscal_device_api_endpoint  (e.g. https://device.bespo.et/register)
-	#   - fiscal_device_type          ("NexGo" or "EFD")
-	#   - device_serial_number        (device MRC prefix)
-	#   - device_secret_key           (HMAC signing secret — stored securely)
-	# -------------------------------------------
-
+	# Timeout per attempt: 30 seconds.
 	MAX_RETRIES = 3
 	BACKOFF_SECS = [1, 2, 4]
 	TIMEOUT_SECONDS = 30
 
 	import time, hmac, hashlib, json as _json
-
-	device_secret = (settings.get("device_secret_key") or "").strip()
 
 	def _sign_payload(payload_dict, secret):
 		"""Compute HMAC-SHA256 signature over JSON-serialized payload."""
@@ -108,7 +157,7 @@ def register_sales_invoice(doc, method):
 					api_endpoint,
 					json=signed_payload,
 					headers={
-						"Authorization": f"Bearer {settings.get('fiscal_device_api_key', '')}",
+						"Authorization": f"Bearer {api_key}",
 						"Content-Type": "application/json",
 						"X-Device-Type": device_type,
 						"X-Device-Serial": serial,
@@ -116,20 +165,18 @@ def register_sales_invoice(doc, method):
 					timeout=TIMEOUT_SECONDS
 				)
 				if response.status_code >= 500:
-					# Server-side error — retry with backoff
 					time.sleep(BACKOFF_SECS[attempt])
 					continue
 				if response.status_code >= 400:
-					# Client error — log and do not retry
 					frappe.log_error(
 						title="Fiscal Device Client Error",
 						message=f"Status: {response.status_code} | Body: {response.text[:500]}"
 					)
 					response.raise_for_status()
-				# Success
 				return response.json()
 			except requests.exceptions.Timeout:
-				frappe.log_error(title="Fiscal Device Timeout", message=f"Attempt {attempt + 1}/{MAX_RETRIES}")
+				frappe.log_error(title="Fiscal Device Timeout",
+					message=f"Attempt {attempt + 1}/{MAX_RETRIES} for {invoice_name}")
 				if attempt < MAX_RETRIES - 1:
 					time.sleep(BACKOFF_SECS[attempt])
 				continue
@@ -149,17 +196,26 @@ def register_sales_invoice(doc, method):
 	except Exception as e:
 		frappe.log_error(
 			title="Fiscal Device Registration Failed",
-			message=str(e)
+			message=f"Invoice {invoice_name}: {e}"
 		)
-		frappe.throw(
-			_("Failed to register invoice with fiscal device: {0}").format(str(e))
+		frappe.publish_realtime(
+			"message",
+			{"message": _("Fiscal device registration failed for {0}: {1}").format(invoice_name, str(e))},
+			after_commit=True
 		)
+	finally:
+		# Release deduplication lock (always)
+		frappe.unlock(f"fiscal_device_{invoice_name}")
+		return
 
-	# 4. Stamp the FS Number and MRC onto the document
-	doc.custom_fs_number = fs_number
-	doc.custom_fiscal_machine_no = mrc
+	# Stamp the FS Number and MRC onto the document
+	frappe.db.set_value("Sales Invoice", invoice_name, {
+		"custom_fs_number": fs_number,
+		"custom_fiscal_machine_no": mrc
+	})
 
-	frappe.msgprint(
-		_("Fiscal device registered — FS No: {0}, MRC: {1}").format(fs_number, mrc),
-		indicator="green", alert=True
+	frappe.publish_realtime(
+		"message",
+		{"message": _("Fiscal device registered — FS No: {0}, MRC: {1}").format(fs_number, mrc)},
+		after_commit=True
 	)

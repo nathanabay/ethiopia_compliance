@@ -115,6 +115,7 @@ def get_data(filters):
 			AND ss.start_date <= %(end_date)s
 			AND ss.docstatus = 1
 		ORDER BY ss.employee, ss.name
+		LIMIT 10000
 	""", {
 		"company": company,
 		"start_date": start_date,

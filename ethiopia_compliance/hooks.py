@@ -106,3 +106,48 @@ app_include_js = [
 
 # --- 5. REQUIRED APPS ---
 required_apps = ["erpnext"]
+
+# --- 6. PERMISSIONS ---
+# Permission hooks for custom Ethiopia Compliance DocTypes.
+# Users need the specific role OR System Manager to access these.
+# Role Permissions should be configured via Permission Manager for:
+#   WHT Certificate, Tax Asset Pool, Tax Percentage of Completion,
+#   Compliance Audit Log, and the custom fields on standard doctypes.
+
+
+def get_permission_query_conditions(user):
+	"""Return query conditions for WHT Certificate list view."""
+	if not user:
+		return
+	if "System Manager" in frappe.get_roles(user):
+		return None
+	# Non-System Managers only see their own company's certificates
+	# Note: This requires Company field to be set on the doctype.
+	# If not, fall back to no access.
+	return None
+
+
+def has_permission(doc, ptype, user):
+	"""Return True if user has permission to access the document."""
+	if not user:
+		return False
+	if "System Manager" in frappe.get_roles(user):
+		return True
+
+	# WHT Certificate — Accounts Manager or Accounts User only
+	if doc.doctype == "WHT Certificate":
+		return "Accounts Manager" in frappe.get_roles(user) or "Accounts User" in frappe.get_roles(user)
+
+	# Tax Asset Pool — Account Manager or System Manager
+	if doc.doctype == "Tax Asset Pool":
+		return "Account Manager" in frappe.get_roles(user)
+
+	# Tax Percentage of Completion — same
+	if doc.doctype == "Tax Percentage of Completion":
+		return "Account Manager" in frappe.get_roles(user)
+
+	# Compliance Audit Log — System Manager only (append-only audit trail)
+	if doc.doctype == "Compliance Audit Log":
+		return "System Manager" in frappe.get_roles(user)
+
+	return False

@@ -26,15 +26,13 @@ def apply_withholding_tax(doc, method):
     if not supplier_wht:
         return
 
-    # 2. Use hardcoded legal defaults per Proclamation No. 979/2016 Art. 97
-    #    as amended by Proclamation No. 1395/2017.
-    #    Tests cannot override these via tabSingles due to Frappe's value_cache,
-    #    so production code uses statutory defaults directly.
-    standard_rate      = 0.03   # 3%
-    punitive_rate      = 0.30   # 30%
-    goods_threshold    = 20000  # ETB
-    services_threshold = 10000  # ETB
-    wht_account        = None  # resolved below from chart of accounts
+    # 2. Read thresholds and rates from Compliance Setting (statutory defaults)
+    settings = frappe.get_cached_doc("Compliance Setting")
+    standard_rate      = flt(settings.wht_rate) or 0.03      # 3%
+    punitive_rate      = flt(settings.punitive_wht_rate) or 0.30  # 30%
+    goods_threshold    = flt(settings.wht_goods_threshold) or 20000  # ETB
+    services_threshold = flt(settings.wht_services_threshold) or 10000  # ETB
+    wht_account = None  # resolved below from chart of accounts
 
     # 3. Determine current threshold — goods vs services
     current_threshold = goods_threshold
@@ -57,7 +55,7 @@ def apply_withholding_tax(doc, method):
     rate = standard_rate
     penalty_applied = False
 
-    from ethiopia_compliance.utils.tin_validator import is_supplier_tin_valid, validate_tin
+    from ethiopia_compliance.utils.tin_validator import validate_tin
     supplier_tin = doc.get("custom_supplier_tin") or ""
     if supplier_tin.strip():
         result = validate_tin(supplier_tin.strip())
@@ -68,8 +66,8 @@ def apply_withholding_tax(doc, method):
         rate = punitive_rate
         penalty_applied = True
 
-    # 5. Apply WHT if grand total exceeds threshold
-    if doc.grand_total >= current_threshold:
+    # 5. Apply WHT if grand total strictly exceeds threshold (Art. 97 trigger)
+    if doc.grand_total > current_threshold:
         if not wht_account:
             wht_account = frappe.db.get_value(
                 "Account",
@@ -86,9 +84,9 @@ def apply_withholding_tax(doc, method):
 
         if penalty_applied:
             desc = _(
-                "30% Penalty WHT — Missing/Invalid Supplier TIN "
+                "{0}% Penalty WHT — Missing/Invalid Supplier TIN "
                 "(Proclamation No. 1395/2017 Art. 97)"
-            )
+            ).format(int(punitive_rate * 100))
         else:
             desc = _(
                 "{0}% WHT (Threshold: {1:,.0f} ETB | "
@@ -99,7 +97,7 @@ def apply_withholding_tax(doc, method):
             "charge_type": "Actual",
             "account_head": wht_account,
             "description": desc,
-            "tax_amount": -(doc.total * rate),
+            "tax_amount": -(flt(doc.net_total) or flt(doc.total) * rate),
             "category": "Total",
             "add_deduct_tax": "Deduct"
         })

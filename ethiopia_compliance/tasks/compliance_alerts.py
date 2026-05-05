@@ -28,6 +28,8 @@ def check_overdue_pension():
 
 	Wire to: scheduler_events.daily in hooks.py
 	"""
+	if not frappe.lock("check_overdue_pension", timeout=60):
+		return  # Another worker holds the lock
 	try:
 		_today = getdate(today())
 
@@ -75,11 +77,13 @@ def check_overdue_pension():
 				days_overdue=days_since_month_end
 			)
 	except Exception:
-		frappe.log_error(title="check_overdue_pension failed")
+		frappe.log_error(frappe.get_traceback(), "check_overdue_pension failed")
 		_critical_alert_email(
 			subject="CRITICAL: check_overdue_pension failed",
 			body=f"<pre>{frappe.get_traceback()}</pre>"
 		)
+	finally:
+		frappe.unlock("check_overdue_pension")
 
 
 def _get_monthly_pension_liability(company, from_date, to_date):
@@ -218,11 +222,29 @@ def _create_pension_overdue_notification(company, month_key, month_end, total_du
 def _critical_alert_email(subject, body):
 	"""Send a critical alert email to the engineering team when a scheduler task fails.
 
-	Delivers to Andualem and Selamawit so the team is immediately aware of
+	Delivers to the engineering team so the team is immediately aware of
 	background task failures that could indicate data or compliance risk.
+
+	Recipients are read from Compliance Setting → engineering_team_email.
+	Falls back to cfo_email if not configured.
 	"""
-	# Default recipients — replace with actual team emails
-	recipients = ["andu@bespo.et", "selam@bespo.et"]
+	try:
+		settings = frappe.get_cached_doc("Compliance Setting")
+		engineering_email = (settings.get("engineering_team_email") or "").strip()
+		if engineering_email:
+			recipients = [e.strip() for e in engineering_email.split(",") if e.strip()]
+		else:
+			recipients = [settings.cfo_email] if settings.cfo_email else []
+	except Exception:
+		recipients = []
+
+	if not recipients:
+		frappe.log_error(
+			title="Critical alert email: no recipients configured",
+			message=f"Subject: {subject}\n\nPlease configure engineering_team_email in Compliance Setting."
+		)
+		return
+
 	try:
 		frappe.sendmail(
 			recipients=recipients,
@@ -231,7 +253,7 @@ def _critical_alert_email(subject, body):
 			priority="high"
 		)
 	except Exception:
-		frappe.log_error(title=f"Failed to send critical alert: {subject}")
+		frappe.log_error(frappe.get_traceback(), f"Failed to send critical alert: {subject}")
 
 
 def notify_users_with_role(role, subject, message):
@@ -260,7 +282,7 @@ def notify_users_with_role(role, subject, message):
 				"document_type": "Company"
 			}).insert(ignore_permissions=True)
 		except Exception:
-			frappe.log_error(title=f"Pension Alert — {role}")
+			frappe.log_error(frappe.get_traceback(), f"Pension Alert — {role}")
 
 
 # ──────────────────────────────────────────
@@ -276,6 +298,8 @@ def send_tax_deadline_digest():
 
 	Sends an HTML email digest to Accounts Manager.
 	"""
+	if not frappe.lock("send_tax_deadline_digest", timeout=60):
+		return
 	try:
 		_today = getdate(today())
 		company = frappe.defaults.get_user_default("Company") or _("All Companies")
@@ -294,11 +318,13 @@ def send_tax_deadline_digest():
 		notify_users_with_role("Accounts Manager", subject, html)
 		notify_users_with_role("System Manager", subject, html)
 	except Exception:
-		frappe.log_error(title="send_tax_deadline_digest failed")
+		frappe.log_error(frappe.get_traceback(), "send_tax_deadline_digest failed")
 		_critical_alert_email(
 			subject="CRITICAL: send_tax_deadline_digest failed",
 			body=f"<pre>{frappe.get_traceback()}</pre>"
 		)
+	finally:
+		frappe.unlock("send_tax_deadline_digest")
 
 
 def _compute_upcoming_deadlines(today_date):
@@ -425,6 +451,8 @@ def send_monthly_deadline_reminder():
 
 	Hooked to scheduler_events.monthly via hooks.py.
 	"""
+	if not frappe.lock("send_monthly_deadline_reminder", timeout=60):
+		return
 	try:
 		_today = getdate(today())
 		company = frappe.defaults.get_user_default("Company") or _("All Companies")
@@ -476,11 +504,13 @@ def send_monthly_deadline_reminder():
 			notify_users_with_role("Accounts Manager", subject, html)
 
 	except Exception:
-		frappe.log_error(title="send_monthly_deadline_reminder failed")
+		frappe.log_error(frappe.get_traceback(), "send_monthly_deadline_reminder failed")
 		_critical_alert_email(
 			subject="CRITICAL: send_monthly_deadline_reminder failed",
 			body=f"<pre>{frappe.get_traceback()}</pre>"
 		)
+	finally:
+		frappe.unlock("send_monthly_deadline_reminder")
 
 
 def _build_monthly_reminder_email(company, deadlines, today_date):
@@ -536,10 +566,13 @@ def check_unremitted_pension_end_of_month():
 	Compares POESSA pension liabilities against actual remittances.
 	Hooked to scheduler_events.monthly (or called by a monthly cron).
 	"""
+	if not frappe.lock("check_unremitted_pension_end_of_month", timeout=60):
+		return
 	try:
 		_today = getdate(today())
 		company = frappe.defaults.get_user_default("Company")
 		if not company:
+			frappe.unlock("check_unremitted_pension_end_of_month")
 			return
 
 		# Get last month
@@ -555,6 +588,7 @@ def check_unremitted_pension_end_of_month():
 		)
 
 		if not pension_liability:
+			frappe.unlock("check_unremitted_pension_end_of_month")
 			return
 
 		liability = list(pension_liability.values())[0] if pension_liability else {}
@@ -570,6 +604,7 @@ def check_unremitted_pension_end_of_month():
 		outstanding = flt(total_due - total_remitted, 2)
 
 		if outstanding <= 1.0:
+			frappe.unlock("check_unremitted_pension_end_of_month")
 			return  # All settled
 
 		# Email HR
@@ -582,11 +617,13 @@ def check_unremitted_pension_end_of_month():
 		)
 
 	except Exception:
-		frappe.log_error(title="check_unremitted_pension_end_of_month failed")
+		frappe.log_error(frappe.get_traceback(), "check_unremitted_pension_end_of_month failed")
 		_critical_alert_email(
 			subject="CRITICAL: check_unremitted_pension_end_of_month failed",
 			body=f"<pre>{frappe.get_traceback()}</pre>"
 		)
+	finally:
+		frappe.unlock("check_unremitted_pension_end_of_month")
 
 
 def _build_and_send_pension_unremitted_alert(company, month, total_due, total_remitted, outstanding):

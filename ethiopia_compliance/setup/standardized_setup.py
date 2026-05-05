@@ -30,8 +30,8 @@ def setup_compliance_settings():
         # Only set if not already set (to avoid overwriting user changes)
         save_needed = False
         if not settings.wht_goods_threshold:
-            settings.wht_goods_threshold = 10000
-            settings.wht_services_threshold = 3000
+            settings.wht_goods_threshold = 20000
+            settings.wht_services_threshold = 10000
             settings.wht_rate = 3
             save_needed = True
         
@@ -81,8 +81,8 @@ def setup_custom_fields():
 
         if dt not in custom_fields: custom_fields[dt] = []
         custom_fields[dt].append({
-            "fieldname": "ethiopian_date",
-            "label": "📅 Ethiopian Date",
+            "fieldname": "custom_ethiopian_date",
+            "label": "Ethiopian Date",
             "fieldtype": "Data",
             "insert_after": insert_after,
             "length": 10,
@@ -184,11 +184,11 @@ def setup_accounts_and_templates():
     
     account_map = {}
     for name, parent_partial, acc_type, root_type in accounts:
-        existing = frappe.db.get_value("Account", {"account_name": ["like", f"{name}%"], "company": company})
+        existing = frappe.db.get_value("Account", {"account_name": ["like", name + "%"], "company": company})
         if existing:
             account_map[name] = existing
         else:
-            parent = frappe.db.get_value("Account", {"account_name": ["like", f"%{parent_partial}%"], "company": company, "is_group": 1})
+            parent = frappe.db.get_value("Account", {"account_name": ["like", "%" + parent_partial], "company": company, "is_group": 1})
             if parent:
                 new_acc = frappe.get_doc({
                     "doctype": "Account", "account_name": name, "company": company, 

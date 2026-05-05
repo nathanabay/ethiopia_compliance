@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from ethiopia_compliance.utils import get_gc_date
+from ethiopia_compliance.utils import apply_ethiopian_date_filters
 
 def execute(filters=None):
 	if filters is None:
@@ -27,22 +27,8 @@ def execute(filters=None):
 	if not filters.get("to_date"):
 		frappe.throw(_("To Date filter is required."))
 
-	# Ethiopian Calendar date conversion
-	if filters.get("use_ethiopian_calendar"):
-		if filters.get("from_date"):
-			parts = str(filters["from_date"]).split("-")
-			if len(parts) == 3:
-				eth_date = f"{parts[2]}-{parts[1]}-{parts[0]}"
-				gc_date = get_gc_date(eth_date)
-				if gc_date:
-					filters["from_date"] = gc_date
-		if filters.get("to_date"):
-			parts = str(filters["to_date"]).split("-")
-			if len(parts) == 3:
-				eth_date = f"{parts[2]}-{parts[1]}-{parts[0]}"
-				gc_date = get_gc_date(eth_date)
-				if gc_date:
-					filters["to_date"] = gc_date
+	# Ethiopian Calendar date conversion (shared utility — cross-DB compatible)
+	apply_ethiopian_date_filters(filters)
 
 	conditions = ["p.docstatus = 1"]
 	values = {
@@ -72,6 +58,7 @@ def execute(filters=None):
 		WHERE tc.account_head LIKE %(vat_account)s
 			AND {where}
 		ORDER BY p.posting_date, p.name
+		LIMIT 10000
 	""".format(where=" AND ".join(conditions)), values, as_dict=True)
 
 	return columns, data

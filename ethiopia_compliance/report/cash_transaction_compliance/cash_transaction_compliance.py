@@ -5,12 +5,20 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
-CASH_LIMIT = 50000  # Proclamation No. 1395/2025
+def _get_cash_limit():
+    """Fetch cash_limit from Compliance Setting; fallback to 50000."""
+    try:
+        settings = frappe.get_single("Compliance Setting")
+        return flt(settings.cash_limit) or 50000
+    except Exception:
+        return 50000
 
 
 def execute(filters=None):
 	if filters is None:
 		filters = {}
+
+	cash_limit = _get_cash_limit()
 
 	columns = [
 		{"fieldname": "posting_date", "label": _("Date"), "fieldtype": "Date", "width": 100},
@@ -49,11 +57,12 @@ def execute(filters=None):
 			AND pe.posting_date >= %(from_date)s
 			AND pe.posting_date <= %(to_date)s
 		ORDER BY pe.posting_date, pe.name
+		LIMIT 10000
 	""", {
 		"company": filters["company"],
 		"from_date": filters["from_date"],
 		"to_date": filters["to_date"],
-		"cash_limit": CASH_LIMIT
+		"cash_limit": cash_limit
 	}, as_dict=True)
 
 	# Query Journal Entries (Cash)
@@ -70,23 +79,24 @@ def execute(filters=None):
 		JOIN `tabJournal Entry Account` jea ON jea.parent = je.name
 		WHERE je.docstatus = 1
 			AND je.company = %(company)s
-			AND jea.account_type IN ('Payable', 'Receivable')
+			AND jea.account_type IN ('Cash', 'Bank')
 			AND jea.credit > %(cash_limit)s
 			AND je.posting_date >= %(from_date)s
 			AND je.posting_date <= %(to_date)s
 		ORDER BY je.posting_date, je.name
+		LIMIT 10000
 	""", {
 		"company": filters["company"],
 		"from_date": filters["from_date"],
 		"to_date": filters["to_date"],
-		"cash_limit": CASH_LIMIT
+		"cash_limit": cash_limit
 	}, as_dict=True)
 
 	# Combine and annotate
 	data = []
 	for row in payment_entries + journal_entries:
 		amount = flt(row.amount)
-		excess = flt(amount - CASH_LIMIT)
+		excess = flt(amount - cash_limit)
 		data.append({
 			"posting_date": row.posting_date,
 			"voucher_type": row.voucher_type,

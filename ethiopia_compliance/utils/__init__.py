@@ -117,6 +117,36 @@ def get_calendar_settings() -> dict:
 		return {"enable_ethiopian_calendar": 1}
 
 
+def apply_ethiopian_date_filters(filters):
+	"""Apply Ethiopian calendar date conversion to report filters in-place.
+
+	Converts from_date and to_date from DD-MM-YYYY Ethiopian format to
+	Gregorian YYYY-MM-DD format when use_ethiopian_calendar is set.
+
+	Use in report execute() functions to replace inline filter conversion code.
+	Cross-DB compatible — no MariaDB/PostgreSQL date functions.
+
+	Args:
+		filters (dict): Report filters dict (modified in-place)
+
+	Example:
+		apply_ethiopian_date_filters(filters)
+		# Now filters["from_date"] and filters["to_date"] are Gregorian
+	"""
+	if not filters.get("use_ethiopian_calendar"):
+		return
+
+	for key in ("from_date", "to_date"):
+		if filters.get(key):
+			parts = str(filters[key]).split("-")
+			if len(parts) == 3:
+				# Convert from DD-MM-YYYY to YYYY-MM-DD for get_gc_date
+				eth_date = f"{parts[2]}-{parts[1]}-{parts[0]}"
+				gc_date = get_gc_date(eth_date)
+				if gc_date:
+					filters[key] = gc_date
+
+
 # --- PAYE COMPUTATION ---
 
 def compute_paye_tax(taxable_income):

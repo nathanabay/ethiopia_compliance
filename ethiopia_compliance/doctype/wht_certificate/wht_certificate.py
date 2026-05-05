@@ -11,7 +11,7 @@ class WHTCertificate(Document):
 		"""Validate dates and generate certificate data"""
 		if self.period_from and self.period_to:
 			if frappe.utils.getdate(self.period_from) > frappe.utils.getdate(self.period_to):
-				frappe.throw("Period From cannot be after Period To")
+				frappe.throw(_("Period From cannot be after Period To"))
 	
 	def before_submit(self):
 		"""Generate certificate data before submission"""
@@ -19,13 +19,15 @@ class WHTCertificate(Document):
 	
 	def on_submit(self):
 		"""Mark as issued"""
-		self.status = "Issued"
-		self.issued_by = frappe.session.user
-		self.issued_on = frappe.utils.now()
-	
+		self.db_set({
+			"status": "Issued",
+			"issued_by": frappe.session.user,
+			"issued_on": frappe.utils.now()
+		})
+
 	def on_cancel(self):
 		"""Mark as cancelled"""
-		self.status = "Cancelled"
+		self.db_set("status", "Cancelled")
 	
 	@frappe.whitelist()
 	def generate_certificate_data(self):
@@ -76,14 +78,14 @@ class WHTCertificate(Document):
 		
 		# Calculate average WHT rate
 		if total_purchase > 0:
-			self.wht_rate = (total_wht / total_purchase) * 100
+			self.wht_rate = flt((total_wht / total_purchase) * 100, 2)
 
 
-@frappe.whitelist()
-def generate_certificate(supplier, company, period_from, period_to, fiscal_year=None):
-	"""
-	API to generate WHT certificate
-	"""
+@frappe.whitelist(force_types=True)
+def generate_certificate(supplier: str, company: str, period_from: str,
+                         period_to: str, fiscal_year: str | None = None) -> dict:
+	"""API to generate WHT certificate."""
+	frappe.only_for(["Accounts Manager", "System Manager"])
 	# Check if certificate already exists
 	existing = frappe.db.exists("WHT Certificate", {
 		"supplier": supplier,

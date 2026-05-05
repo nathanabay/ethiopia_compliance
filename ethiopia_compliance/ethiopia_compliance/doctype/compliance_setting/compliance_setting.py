@@ -17,7 +17,18 @@ class ComplianceSetting(Document):
 		self._validate_thresholds()
 
 	def _validate_thresholds(self):
-		"""Cross-validate that thresholds are internally consistent."""
+		"""Cross-validate that thresholds are internally consistent and meet statutory minima.
+
+		Statutory minima per Proclamation No. 979/2016 Art. 97 as amended:
+		- Goods threshold: minimum 20,000 ETB
+		- Services threshold: minimum 10,000 ETB
+		"""
+		if self.wht_goods_threshold and self.wht_goods_threshold < 20000:
+			frappe.throw(_("WHT Goods Threshold must be at least 20,000 ETB per Art. 97 of Proclamation No. 979/2016."))
+
+		if self.wht_services_threshold and self.wht_services_threshold < 10000:
+			frappe.throw(_("WHT Services Threshold must be at least 10,000 ETB per Art. 97 of Proclamation No. 979/2016."))
+
 		if self.wht_goods_threshold and self.wht_services_threshold:
 			if self.wht_goods_threshold <= self.wht_services_threshold:
 				frappe.throw(_("WHT Goods Threshold must be greater than Services Threshold."))

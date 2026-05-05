@@ -99,9 +99,9 @@ def get_data(filters):
 
     # Batch fetch employee TINs (1 query instead of N)
     emp_ids = list({s.emp_id for s in slips})
-    emp_tins = {}
-    for name, tax_id in frappe.db.get_values("Employee", emp_ids, ["name", "tax_id"]):
-        emp_tins[name] = tax_id or ""
+    emp_tin_map = {}
+    for row in frappe.get_all("Employee", filters={"name": ["in", emp_ids]}, fields=["name", "tax_id"]):
+        emp_tin_map[row.name] = row.tax_id or ""
 
     # Batch fetch salary components (1 query)
     slip_names = [s.name for s in slips]
@@ -118,7 +118,7 @@ def get_data(filters):
     data = []
     for slip in slips:
         components = components_by_parent.get(slip.name, [])
-        emp_tin = emp_tins.get(slip.emp_id, "")
+        emp_tin = emp_tin_map.get(slip.emp_id, "")
 
         basic = transport = overtime = other = tax_withheld = cost_share = emp_pension = 0.0
 
