@@ -55,18 +55,15 @@ class TestDashboardStats(FrappeTestCase):
         self.assertLessEqual(result['employees'], 100000, "employees unexpectedly large")
         self.assertLessEqual(result['active_contracts'], 10000, "active_contracts unexpectedly large")
 
+    def test_get_chart_data(self):
+        """Test that chart data returns expected structure"""
+        result = get_chart_data("this_month")
 
-def test_get_chart_data():
-    """Test that chart data returns expected structure"""
-    from ethiopia_compliance.page.compliance_dashboard.compliance_dashboard import get_chart_data
-
-    result = get_chart_data("this_month")
-
-    assert isinstance(result, dict)
-    assert "revenue" in result
-    assert "expenses" in result
-    assert "cash_flow" in result
-    assert "taxes" in result
-    assert result["taxes"].get("wht") is not None
-    assert result["taxes"].get("vat") is not None
-    assert result["taxes"].get("tot") is not None
+        assert isinstance(result, dict)
+        assert "revenue" in result
+        assert "expenses" in result
+        assert "cash_flow" in result
+        assert "taxes" in result
+        assert result["taxes"].get("wht") is not None
+        assert result["taxes"].get("vat") is not None
+        assert result["taxes"].get("tot") is not None

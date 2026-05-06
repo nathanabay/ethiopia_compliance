@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, getdate, today, add_days, date_diff, nowdate, format_date
 from datetime import date, timedelta
+from dateutil.relativedelta import relativedelta
 import calendar
 
 
@@ -576,7 +577,6 @@ def check_unremitted_pension_end_of_month():
 			return
 
 		# Get last month
-		from dateutil.relativedelta import relativedelta
 		last_month_end = (_today.replace(day=1) - relativedelta(days=1))
 		last_month_start = last_month_end.replace(day=1)
 
@@ -649,7 +649,7 @@ def _build_and_send_pension_unremitted_alert(company, month, total_due, total_re
 					message=_pension_unremitted_html(company, month, total_due, total_remitted, outstanding)
 				)
 			except Exception:
-				pass
+				frappe.log_error(frappe.get_traceback(), f"POESSA Alert — {u.parent}")
 		return
 
 	frappe.sendmail(

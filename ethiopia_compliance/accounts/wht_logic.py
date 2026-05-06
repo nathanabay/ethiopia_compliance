@@ -42,7 +42,7 @@ def apply_withholding_tax(doc, method):
             # Direct SQL to avoid Frappe ORM field-name confusion
             rows = frappe.db.sql(
                 "SELECT name, is_stock_item FROM `tabItem` WHERE name IN %s",
-                (item_codes,),
+                (tuple(item_codes),),
                 as_dict=1
             )
             is_stock_map = {r.name: r.is_stock_item for r in rows}

@@ -118,21 +118,18 @@ required_apps = ["erpnext"]
 def get_permission_query_conditions(user):
 	"""Return query conditions for WHT Certificate list view."""
 	if not user:
-		return
+		user = frappe.session.user
 	if "System Manager" in frappe.get_roles(user):
-		return None
-	# Non-System Managers only see their own company's certificates
-	# Note: This requires Company field to be set on the doctype.
-	# If not, fall back to no access.
-	return None
+		return ""
+	return ""
 
 
 def has_permission(doc, ptype, user):
 	"""Return True if user has permission to access the document."""
 	if not user:
-		return False
+		user = frappe.session.user
 	if "System Manager" in frappe.get_roles(user):
-		return True
+		return None  # Fall through to default checks
 
 	# WHT Certificate — Accounts Manager or Accounts User only
 	if doc.doctype == "WHT Certificate":
@@ -150,4 +147,4 @@ def has_permission(doc, ptype, user):
 	if doc.doctype == "Compliance Audit Log":
 		return "System Manager" in frappe.get_roles(user)
 
-	return False
+	return None  # Fall through to default checks

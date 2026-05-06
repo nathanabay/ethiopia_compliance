@@ -35,10 +35,10 @@ class ComplianceAuditLog(Document):
             frappe.throw(_("Entity Name is required."))
 
 
-@frappe.whitelist()
-def log_tin_validation(entity_type, entity_name, tin_number,
-                        validation_result, override_performed=False,
-                        override_by=None, override_reason=None):
+@frappe.whitelist(force_types=True)
+def log_tin_validation(entity_type: str, entity_name: str, tin_number: str,
+                        validation_result: str, override_performed: bool = False,
+                        override_by: str | None = None, override_reason: str | None = None) -> dict:
     """Create an audit log entry for a TIN validation event.
 
     Args:
@@ -67,9 +67,9 @@ def log_tin_validation(entity_type, entity_name, tin_number,
     return log
 
 
-@frappe.whitelist()
-def log_wht_application(purchase_invoice, supplier, wht_rate,
-                        wht_amount, penalty_applied=False):
+@frappe.whitelist(force_types=True)
+def log_wht_application(purchase_invoice: str, supplier: str, wht_rate: float,
+                        wht_amount: float, penalty_applied: bool = False) -> dict:
     """Create an audit log entry for a WHT deduction event.
 
     Args:
@@ -96,9 +96,9 @@ def log_wht_application(purchase_invoice, supplier, wht_rate,
     return log
 
 
-@frappe.whitelist()
-def log_cash_transaction_blocked(doc_name, amount, mode_of_payment,
-                                   reason):
+@frappe.whitelist(force_types=True)
+def log_cash_transaction_blocked(doc_name: str, amount: float, mode_of_payment: str,
+                                   reason: str) -> dict:
     """Create an audit log entry for a blocked cash transaction.
 
     Args:

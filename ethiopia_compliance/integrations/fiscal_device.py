@@ -10,6 +10,11 @@
 import frappe
 from frappe import _
 from frappe.utils import flt, now_datetime
+import time
+import hmac
+import hashlib
+import json
+import requests
 
 
 def register_sales_invoice(doc, method):
@@ -136,16 +141,13 @@ def _register_sales_invoice_bg(invoice_name, api_endpoint, device_type, serial):
 	BACKOFF_SECS = [1, 2, 4]
 	TIMEOUT_SECONDS = 30
 
-	import time, hmac, hashlib, json as _json
-
 	def _sign_payload(payload_dict, secret):
 		"""Compute HMAC-SHA256 signature over JSON-serialized payload."""
-		canonical = _json.dumps(payload_dict, sort_keys=True, separators=(",", ":"))
+		canonical = json.dumps(payload_dict, sort_keys=True, separators=(",", ":"))
 		return hmac.new(secret.encode("utf-8"), canonical.encode("utf-8"), hashlib.sha256).hexdigest()
 
 	def _call_device(payload):
 		"""Make the HTTP call with retry/backoff. Returns response dict or raises."""
-		import requests
 
 		signed_payload = dict(payload)
 		if device_secret:

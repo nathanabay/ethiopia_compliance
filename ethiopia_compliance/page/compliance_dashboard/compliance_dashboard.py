@@ -93,7 +93,7 @@ def get_dashboard_data(period='this_month', from_date=None, to_date=None) -> dic
 
 def get_tax_summary(company, from_date, to_date):
 	"""Get tax summary for the period with 1-hour caching"""
-	cache_key = f"ethiopia_compliance:tax_summary:{company}:{from_date}:{to_date}"
+	cache_key = f"ec_v1:tax_summary:{company}:{from_date}:{to_date}"
 	cached = frappe.cache().get_value(cache_key)
 	if cached is not None:
 		return cached
@@ -289,7 +289,7 @@ def get_chart_data(period='this_month', from_date=None, to_date=None):
     month_start, month_end, period_label = _get_date_range(period, from_date, to_date)
 
     # Cache key based on company and date range
-    cache_key = f"ethiopia_compliance:chart_data:{company}:{month_start}:{month_end}"
+    cache_key = f"ec_v1:chart_data:{company}:{month_start}:{month_end}"
     cached = frappe.cache().get_value(cache_key)
     if cached is not None:
         return cached
@@ -328,22 +328,32 @@ def get_chart_data(period='this_month', from_date=None, to_date=None):
 
     # Get monthly data for revenue and expenses
     def get_monthly_data(doctype, date_field, amount_field="base_net_total"):
-        # Validate inputs to prevent SQL injection
+        # Validate inputs to prevent SQL injection via allowlist
         safe_doctype = validate_field(doctype, allowed_doctypes, "doctype")
         safe_date_field = validate_field(date_field, allowed_date_fields, "date_field")
         safe_amount_field = validate_field(amount_field, allowed_amount_fields, "amount_field")
+
+        # Map validated field names to actual column names (defense-in-depth)
+        doctype_map = {"Sales Invoice": "Sales Invoice", "Purchase Invoice": "Purchase Invoice"}
+        date_field_map = {"posting_date": "posting_date", "creation": "creation"}
+        amount_field_map = {"base_net_total": "base_net_total", "grand_total": "grand_total", "rounded_total": "rounded_total"}
 
         months_data = {}
         for params in months_query_params:
             month_date, month_end_dt, _ = params
 
-            data = frappe.db.sql(f"""
-                SELECT SUM({safe_amount_field}) as amount
-                FROM `tab{safe_doctype}`
-                WHERE {safe_date_field} BETWEEN %s AND %s
+            # Use validated mapped values directly (no dynamic SQL construction)
+            data = frappe.db.sql("""
+                SELECT SUM({amount_field}) as amount
+                FROM `tab{doctype}`
+                WHERE {date_field} BETWEEN %s AND %s
                 AND company = %s
                 AND docstatus = 1
-            """, (month_date, month_end_dt, company), as_dict=True)
+            """.format(
+                amount_field=amount_field_map[safe_amount_field],
+                doctype=doctype_map[safe_doctype],
+                date_field=date_field_map[safe_date_field]
+            ), (month_date, month_end_dt, company), as_dict=True)
 
             month_dt = datetime.strptime(month_date, '%Y-%m-%d')
             month_label = month_dt.strftime('%b')

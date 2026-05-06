@@ -24,6 +24,7 @@ def _get_cash_limit():
         settings = frappe.get_cached_doc("Compliance Setting")
         return flt(settings.cash_limit) or 50000
     except Exception:
+        frappe.log_error(frappe.get_traceback(), "Cash limit fetch failed, using default")
         return 50000
 
 

@@ -151,7 +151,14 @@ def _create_wht_certificate_for_invoice(invoice_name, supplier, company,
 
     # Submit the certificate so it's ready to send
     if cert.docstatus == 0:
-        cert.submit()
+        # Permission check: only System Manager or Accounts Manager can submit
+        if "System Manager" in frappe.get_roles() or "Accounts Manager" in frappe.get_roles():
+            cert.submit()
+        else:
+            frappe.throw(
+                _("Only System Manager or Accounts Manager can submit WHT Certificate {0}").format(cert.name),
+                title=_("Permission Denied")
+            )
 
     # Email the PDF to supplier contact
     _email_wht_certificate(cert, supplier)
@@ -190,7 +197,14 @@ def _link_invoice_to_certificate(cert_name, invoice_name, payment_entry):
     if total_purchase > 0:
         cert.wht_rate = flt((total_wht / total_purchase) * 100, 2)
 
-    cert.save(ignore_permissions=True)
+    # Permission check before save
+    if "System Manager" in frappe.get_roles() or "Accounts Manager" in frappe.get_roles():
+        cert.save(ignore_permissions=True)
+    else:
+        frappe.throw(
+            _("Only System Manager or Accounts Manager can update WHT Certificate {0}").format(cert.name),
+            title=_("Permission Denied")
+        )
 
 
 def _email_wht_certificate(cert, supplier):
